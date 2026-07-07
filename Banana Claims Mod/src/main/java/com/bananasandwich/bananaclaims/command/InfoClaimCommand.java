@@ -40,8 +40,7 @@ public class InfoClaimCommand {
                                     "Claim: " + claim.getName()
                                             + "\nOwner: " + claim.getOwnerName()
                                             + "\nDescription: " + (claim.getDescription().isBlank() ? "No description." : claim.getDescription())
-                                            + "\nDimension: " + claim.getDimension()
-                                            + "\nChunk: " + claim.getChunkX() + ", " + claim.getChunkZ()
+                                            + "\nChunks: " + claim.getChunks().size()
                             ),
                             false
                     );
