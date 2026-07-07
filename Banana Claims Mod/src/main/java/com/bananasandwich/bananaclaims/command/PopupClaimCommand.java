@@ -19,95 +19,144 @@ public class PopupClaimCommand {
                         .then(Commands.literal("set")
                                 .then(Commands.literal("mode")
                                         .then(Commands.argument("mode", StringArgumentType.word())
-                                                .executes(context -> {
-                                                    String claimName = StringArgumentType.getString(context, "claim");
-                                                    String modeText = StringArgumentType.getString(context, "mode");
-
-                                                    Optional<Claim> optionalClaim = findClaim(claimName);
-
-                                                    if (optionalClaim.isEmpty()) {
-                                                        context.getSource().sendFailure(Component.literal("No claim found named \"" + claimName + "\"."));
-                                                        return 0;
-                                                    }
-
-                                                    PopupDisplayMode mode;
-
-                                                    try {
-                                                        mode = PopupDisplayMode.valueOf(modeText.toUpperCase());
-                                                    } catch (IllegalArgumentException exception) {
-                                                        context.getSource().sendFailure(Component.literal("Invalid popup mode. Use ACTIONBAR, TITLE, or CHAT."));
-                                                        return 0;
-                                                    }
-
-                                                    Claim claim = optionalClaim.get();
-                                                    claim.getPopupSettings().setDisplayMode(mode);
-                                                    Bananaclaims.CLAIM_MANAGER.saveClaims();
-
-                                                    context.getSource().sendSuccess(
-                                                            () -> Component.literal("Set popup mode for \"" + claim.getName() + "\" to " + mode + "."),
-                                                            false
-                                                    );
-
-                                                    return 1;
-                                                })
+                                                .executes(context -> setMode(context.getSource(), StringArgumentType.getString(context, "claim"), StringArgumentType.getString(context, "mode")))
                                         )
                                 )
 
                                 .then(Commands.literal("enterTitle")
                                         .then(Commands.argument("text", StringArgumentType.greedyString())
-                                                .executes(context -> {
-                                                    String claimName = StringArgumentType.getString(context, "claim");
-                                                    String text = StringArgumentType.getString(context, "text");
-
-                                                    Optional<Claim> optionalClaim = findClaim(claimName);
-
-                                                    if (optionalClaim.isEmpty()) {
-                                                        context.getSource().sendFailure(Component.literal("No claim found named \"" + claimName + "\"."));
-                                                        return 0;
-                                                    }
-
-                                                    Claim claim = optionalClaim.get();
-                                                    claim.getPopupSettings().setEnterTitle(text);
-                                                    Bananaclaims.CLAIM_MANAGER.saveClaims();
-
-                                                    context.getSource().sendSuccess(
-                                                            () -> Component.literal("Set enter title for \"" + claim.getName() + "\"."),
-                                                            false
-                                                    );
-
-                                                    return 1;
-                                                })
+                                                .executes(context -> setEnterTitle(context.getSource(), StringArgumentType.getString(context, "claim"), StringArgumentType.getString(context, "text")))
                                         )
                                 )
 
                                 .then(Commands.literal("enterSubtitle")
                                         .then(Commands.argument("text", StringArgumentType.greedyString())
-                                                .executes(context -> {
-                                                    String claimName = StringArgumentType.getString(context, "claim");
-                                                    String text = StringArgumentType.getString(context, "text");
+                                                .executes(context -> setEnterSubtitle(context.getSource(), StringArgumentType.getString(context, "claim"), StringArgumentType.getString(context, "text")))
+                                        )
+                                )
 
-                                                    Optional<Claim> optionalClaim = findClaim(claimName);
+                                .then(Commands.literal("leaveTitle")
+                                        .then(Commands.argument("text", StringArgumentType.greedyString())
+                                                .executes(context -> setLeaveTitle(context.getSource(), StringArgumentType.getString(context, "claim"), StringArgumentType.getString(context, "text")))
+                                        )
+                                )
 
-                                                    if (optionalClaim.isEmpty()) {
-                                                        context.getSource().sendFailure(Component.literal("No claim found named \"" + claimName + "\"."));
-                                                        return 0;
-                                                    }
-
-                                                    Claim claim = optionalClaim.get();
-                                                    claim.getPopupSettings().setEnterSubtitle(text);
-                                                    Bananaclaims.CLAIM_MANAGER.saveClaims();
-
-                                                    context.getSource().sendSuccess(
-                                                            () -> Component.literal("Set enter subtitle for \"" + claim.getName() + "\"."),
-                                                            false
-                                                    );
-
-                                                    return 1;
-                                                })
+                                .then(Commands.literal("leaveSubtitle")
+                                        .then(Commands.argument("text", StringArgumentType.greedyString())
+                                                .executes(context -> setLeaveSubtitle(context.getSource(), StringArgumentType.getString(context, "claim"), StringArgumentType.getString(context, "text")))
                                         )
                                 )
                         )
                 );
+    }
+
+    private static int setMode(CommandSourceStack source, String claimName, String modeText) {
+        Optional<Claim> optionalClaim = findClaim(claimName);
+
+        if (optionalClaim.isEmpty()) {
+            source.sendFailure(Component.literal("No claim found named \"" + claimName + "\"."));
+            return 0;
+        }
+
+        PopupDisplayMode mode;
+
+        try {
+            mode = PopupDisplayMode.valueOf(modeText.toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            source.sendFailure(Component.literal("Invalid popup mode. Use ACTIONBAR, TITLE, or CHAT."));
+            return 0;
+        }
+
+        Claim claim = optionalClaim.get();
+        claim.getPopupSettings().setDisplayMode(mode);
+        Bananaclaims.CLAIM_MANAGER.saveClaims();
+
+        source.sendSuccess(
+                () -> Component.literal("Set popup mode for \"" + claim.getName() + "\" to " + mode + "."),
+                false
+        );
+
+        return 1;
+    }
+
+    private static int setEnterTitle(CommandSourceStack source, String claimName, String text) {
+        Optional<Claim> optionalClaim = findClaim(claimName);
+
+        if (optionalClaim.isEmpty()) {
+            source.sendFailure(Component.literal("No claim found named \"" + claimName + "\"."));
+            return 0;
+        }
+
+        Claim claim = optionalClaim.get();
+        claim.getPopupSettings().setEnterTitle(text);
+        Bananaclaims.CLAIM_MANAGER.saveClaims();
+
+        source.sendSuccess(
+                () -> Component.literal("Set enter title for \"" + claim.getName() + "\"."),
+                false
+        );
+
+        return 1;
+    }
+
+    private static int setEnterSubtitle(CommandSourceStack source, String claimName, String text) {
+        Optional<Claim> optionalClaim = findClaim(claimName);
+
+        if (optionalClaim.isEmpty()) {
+            source.sendFailure(Component.literal("No claim found named \"" + claimName + "\"."));
+            return 0;
+        }
+
+        Claim claim = optionalClaim.get();
+        claim.getPopupSettings().setEnterSubtitle(text);
+        Bananaclaims.CLAIM_MANAGER.saveClaims();
+
+        source.sendSuccess(
+                () -> Component.literal("Set enter subtitle for \"" + claim.getName() + "\"."),
+                false
+        );
+
+        return 1;
+    }
+
+    private static int setLeaveTitle(CommandSourceStack source, String claimName, String text) {
+        Optional<Claim> optionalClaim = findClaim(claimName);
+
+        if (optionalClaim.isEmpty()) {
+            source.sendFailure(Component.literal("No claim found named \"" + claimName + "\"."));
+            return 0;
+        }
+
+        Claim claim = optionalClaim.get();
+        claim.getPopupSettings().setLeaveTitle(text);
+        Bananaclaims.CLAIM_MANAGER.saveClaims();
+
+        source.sendSuccess(
+                () -> Component.literal("Set leave title for \"" + claim.getName() + "\"."),
+                false
+        );
+
+        return 1;
+    }
+
+    private static int setLeaveSubtitle(CommandSourceStack source, String claimName, String text) {
+        Optional<Claim> optionalClaim = findClaim(claimName);
+
+        if (optionalClaim.isEmpty()) {
+            source.sendFailure(Component.literal("No claim found named \"" + claimName + "\"."));
+            return 0;
+        }
+
+        Claim claim = optionalClaim.get();
+        claim.getPopupSettings().setLeaveSubtitle(text);
+        Bananaclaims.CLAIM_MANAGER.saveClaims();
+
+        source.sendSuccess(
+                () -> Component.literal("Set leave subtitle for \"" + claim.getName() + "\"."),
+                false
+        );
+
+        return 1;
     }
 
     private static Optional<Claim> findClaim(String claimName) {
