@@ -21,14 +21,14 @@ public class PopupRenderer {
         String subtitle = settings.getEnterSubtitle();
 
         if (title == null || title.isBlank()) {
-            title = claim.getName();
+            title = "%claim%";
         }
 
         if (subtitle == null || subtitle.isBlank()) {
             subtitle = "Now Entering";
         }
 
-        render(player, settings.getDisplayMode(), title, subtitle);
+        render(player, claim, settings.getDisplayMode(), title, subtitle);
     }
 
     public static void showLeave(ServerPlayer player, Claim claim) {
@@ -38,27 +38,39 @@ public class PopupRenderer {
         String subtitle = settings.getLeaveSubtitle();
 
         if (title == null || title.isBlank()) {
-            title = claim.getName();
+            title = "%claim%";
         }
 
         if (subtitle == null || subtitle.isBlank()) {
             subtitle = "Now Leaving";
         }
 
-        render(player, settings.getDisplayMode(), title, subtitle);
+        render(player, claim, settings.getDisplayMode(), title, subtitle);
     }
 
-    private static void render(ServerPlayer player, PopupDisplayMode displayMode, String title, String subtitle) {
+    private static void render(ServerPlayer player, Claim claim, PopupDisplayMode displayMode, String title, String subtitle) {
         PopupDisplayMode mode = displayMode == null ? PopupDisplayMode.ACTIONBAR : displayMode;
 
-        MutableComponent titleComponent = parseHexColors(title);
-        MutableComponent subtitleComponent = parseHexColors(subtitle);
+        MutableComponent titleComponent = parseHexColors(applyPlaceholders(title, claim));
+        MutableComponent subtitleComponent = parseHexColors(applyPlaceholders(subtitle, claim));
 
         switch (mode) {
             case TITLE -> renderTitle(player, titleComponent, subtitleComponent);
             case CHAT -> renderChat(player, titleComponent, subtitleComponent);
             case ACTIONBAR -> renderActionBar(player, titleComponent, subtitleComponent);
         }
+    }
+
+    private static String applyPlaceholders(String text, Claim claim) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+
+        return text
+                .replace("%claim%", claim.getName())
+                .replace("%owner%", claim.getOwnerName())
+                .replace("%description%", claim.getDescription())
+                .replace("%chunks%", String.valueOf(claim.getChunks().size()));
     }
 
     private static void renderActionBar(ServerPlayer player, MutableComponent title, MutableComponent subtitle) {
