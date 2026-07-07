@@ -20,6 +20,7 @@ public class ClaimCommand {
 
                         .then(CreateClaimCommand.register())
                         .then(InfoClaimCommand.register())
+                        .then(DeleteClaimCommand.register())
         );
     }
 }

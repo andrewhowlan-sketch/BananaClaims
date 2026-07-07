@@ -20,6 +20,7 @@ public class Bananaclaims implements ModInitializer {
 	public void onInitialize() {
 		LOGGER.info("Banana Claims loaded!");
 
+		CLAIM_MANAGER.setStorage(CLAIM_STORAGE);
 		CLAIM_MANAGER.loadClaims(CLAIM_STORAGE.loadClaims());
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->

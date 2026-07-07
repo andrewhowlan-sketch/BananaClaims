@@ -38,7 +38,6 @@ public class CreateClaimCommand {
                                 return 0;
                             }
 
-                            Bananaclaims.CLAIM_STORAGE.saveClaims(Bananaclaims.CLAIM_MANAGER.getAllClaims());
 
                             context.getSource().sendSuccess(
                                     () -> Component.literal("Claim \"" + name + "\" created successfully."),
