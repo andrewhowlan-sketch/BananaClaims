@@ -1,16 +1,18 @@
-
 package com.bananasandwich.bananaclaims.claim;
 
 import java.util.UUID;
 
 public class Claim {
-    private final String name;
-    private final UUID ownerUuid;
-    private final String ownerName;
-    private final String dimension;
-    private final int chunkX;
-    private final int chunkZ;
+    private String name;
+    private UUID ownerUuid;
+    private String ownerName;
+    private String dimension;
+    private int chunkX;
+    private int chunkZ;
     private String description;
+
+    public Claim() {
+    }
 
     public Claim(String name, UUID ownerUuid, String ownerName, String dimension, int chunkX, int chunkZ) {
         this.name = name;
@@ -24,6 +26,10 @@ public class Claim {
 
     public String getName() {
         return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public UUID getOwnerUuid() {
@@ -47,14 +53,14 @@ public class Claim {
     }
 
     public String getDescription() {
-        return description;
+        return description == null ? "" : description;
     }
 
     public void setDescription(String description) {
         this.description = description;
     }
 
-    public boolean isOwner(java.util.UUID playerUuid) {
-        return ownerUuid.equals(playerUuid);
+    public boolean isOwner(UUID playerUuid) {
+        return ownerUuid != null && ownerUuid.equals(playerUuid);
     }
 }

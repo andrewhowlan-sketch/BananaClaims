@@ -47,6 +47,10 @@ public class ClaimManager {
         return removed;
     }
 
+    public void saveClaims() {
+        save();
+    }
+
     public Optional<Claim> getClaimAt(String dimension, int chunkX, int chunkZ) {
         return claims.stream()
                 .filter(claim ->
