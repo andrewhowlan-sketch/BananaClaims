@@ -17,6 +17,14 @@ public class ClaimManager {
         return true;
     }
 
+    public void loadClaims(List<Claim> loadedClaims) {
+        claims.clear();
+
+        if (loadedClaims != null) {
+            claims.addAll(loadedClaims);
+        }
+    }
+
     public boolean removeClaim(String dimension, int chunkX, int chunkZ) {
         return claims.removeIf(claim ->
                 claim.getDimension().equals(dimension)
