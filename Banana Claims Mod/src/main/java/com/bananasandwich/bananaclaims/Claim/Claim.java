@@ -13,6 +13,7 @@ public class Claim {
     private int chunkZ;
     private String description;
     private Set<ClaimChunk> chunks = new HashSet<>();
+    private ClaimFlags flags = new ClaimFlags();
 
     public Claim() {
     }
@@ -27,6 +28,7 @@ public class Claim {
         this.description = "";
         this.chunks = new HashSet<>();
         this.chunks.add(new ClaimChunk(dimension, chunkX, chunkZ));
+        this.flags = new ClaimFlags();
     }
 
     public String getName() {
@@ -87,6 +89,11 @@ public class Claim {
         return chunks.contains(new ClaimChunk(dimension, chunkX, chunkZ));
     }
 
+    public ClaimFlags getFlags() {
+        ensureFlags();
+        return flags;
+    }
+
     public boolean isOwner(UUID playerUuid) {
         return ownerUuid != null && ownerUuid.equals(playerUuid);
     }
@@ -98,6 +105,12 @@ public class Claim {
 
         if (chunks.isEmpty() && dimension != null) {
             chunks.add(new ClaimChunk(dimension, chunkX, chunkZ));
+        }
+    }
+
+    private void ensureFlags() {
+        if (flags == null) {
+            flags = new ClaimFlags();
         }
     }
 }
