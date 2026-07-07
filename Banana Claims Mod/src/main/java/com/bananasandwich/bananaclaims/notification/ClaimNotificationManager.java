@@ -3,6 +3,7 @@ package com.bananasandwich.bananaclaims.notification;
 import com.bananasandwich.bananaclaims.Bananaclaims;
 import com.bananasandwich.bananaclaims.claim.Claim;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
@@ -29,6 +30,10 @@ public class ClaimNotificationManager {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 checkPlayerClaimLocation(player);
             }
+        });
+
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            LAST_KNOWN_CLAIMS.remove(handler.player.getUUID());
         });
     }
 
