@@ -14,9 +14,18 @@ import java.util.UUID;
 
 public class ClaimNotificationManager {
     private static final Map<UUID, LastKnownClaim> LAST_KNOWN_CLAIMS = new HashMap<>();
+    private static int tickCounter = 0;
 
     public static void register() {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
+            tickCounter++;
+
+            if (tickCounter < 10) {
+                return;
+            }
+
+            tickCounter = 0;
+
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 checkPlayerClaimLocation(player);
             }
