@@ -53,4 +53,8 @@ public class Claim {
     public void setDescription(String description) {
         this.description = description;
     }
+
+    public boolean isOwner(java.util.UUID playerUuid) {
+        return ownerUuid.equals(playerUuid);
+    }
 }
