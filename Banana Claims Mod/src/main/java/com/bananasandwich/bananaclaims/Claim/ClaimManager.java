@@ -16,8 +16,10 @@ public class ClaimManager {
     }
 
     public boolean addClaim(Claim claim) {
-        if (isChunkClaimed(claim.getDimension(), claim.getChunkX(), claim.getChunkZ())) {
-            return false;
+        for (ClaimChunk chunk : claim.getChunks()) {
+            if (isChunkClaimed(chunk.getDimension(), chunk.getChunkX(), chunk.getChunkZ())) {
+                return false;
+            }
         }
 
         claims.add(claim);
@@ -34,11 +36,7 @@ public class ClaimManager {
     }
 
     public boolean removeClaim(String dimension, int chunkX, int chunkZ) {
-        boolean removed = claims.removeIf(claim ->
-                claim.getDimension().equals(dimension)
-                        && claim.getChunkX() == chunkX
-                        && claim.getChunkZ() == chunkZ
-        );
+        boolean removed = claims.removeIf(claim -> claim.containsChunk(dimension, chunkX, chunkZ));
 
         if (removed) {
             save();
@@ -53,11 +51,7 @@ public class ClaimManager {
 
     public Optional<Claim> getClaimAt(String dimension, int chunkX, int chunkZ) {
         return claims.stream()
-                .filter(claim ->
-                        claim.getDimension().equals(dimension)
-                                && claim.getChunkX() == chunkX
-                                && claim.getChunkZ() == chunkZ
-                )
+                .filter(claim -> claim.containsChunk(dimension, chunkX, chunkZ))
                 .findFirst();
     }
 

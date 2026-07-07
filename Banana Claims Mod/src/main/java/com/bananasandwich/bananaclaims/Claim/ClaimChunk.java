@@ -3,10 +3,12 @@ package com.bananasandwich.bananaclaims.claim;
 import java.util.Objects;
 
 public class ClaimChunk {
+    private String dimension;
+    private int chunkX;
+    private int chunkZ;
 
-    private final String dimension;
-    private final int chunkX;
-    private final int chunkZ;
+    public ClaimChunk() {
+    }
 
     public ClaimChunk(String dimension, int chunkX, int chunkZ) {
         this.dimension = dimension;
@@ -33,7 +35,7 @@ public class ClaimChunk {
 
         return chunkX == other.chunkX
                 && chunkZ == other.chunkZ
-                && dimension.equals(other.dimension);
+                && Objects.equals(dimension, other.dimension);
     }
 
     @Override

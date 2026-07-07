@@ -1,5 +1,7 @@
 package com.bananasandwich.bananaclaims.claim;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 public class Claim {
@@ -10,6 +12,7 @@ public class Claim {
     private int chunkX;
     private int chunkZ;
     private String description;
+    private Set<ClaimChunk> chunks = new HashSet<>();
 
     public Claim() {
     }
@@ -22,6 +25,8 @@ public class Claim {
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
         this.description = "";
+        this.chunks = new HashSet<>();
+        this.chunks.add(new ClaimChunk(dimension, chunkX, chunkZ));
     }
 
     public String getName() {
@@ -45,11 +50,13 @@ public class Claim {
     }
 
     public int getChunkX() {
-        return chunkX;
+        ensureChunks();
+        return chunks.iterator().next().getChunkX();
     }
 
     public int getChunkZ() {
-        return chunkZ;
+        ensureChunks();
+        return chunks.iterator().next().getChunkZ();
     }
 
     public String getDescription() {
@@ -60,7 +67,32 @@ public class Claim {
         this.description = description;
     }
 
+    public Set<ClaimChunk> getChunks() {
+        ensureChunks();
+        return Set.copyOf(chunks);
+    }
+
+    public void addChunk(String dimension, int chunkX, int chunkZ) {
+        ensureChunks();
+        chunks.add(new ClaimChunk(dimension, chunkX, chunkZ));
+    }
+
+    public boolean containsChunk(String dimension, int chunkX, int chunkZ) {
+        ensureChunks();
+        return chunks.contains(new ClaimChunk(dimension, chunkX, chunkZ));
+    }
+
     public boolean isOwner(UUID playerUuid) {
         return ownerUuid != null && ownerUuid.equals(playerUuid);
+    }
+
+    private void ensureChunks() {
+        if (chunks == null) {
+            chunks = new HashSet<>();
+        }
+
+        if (chunks.isEmpty() && dimension != null) {
+            chunks.add(new ClaimChunk(dimension, chunkX, chunkZ));
+        }
     }
 }
