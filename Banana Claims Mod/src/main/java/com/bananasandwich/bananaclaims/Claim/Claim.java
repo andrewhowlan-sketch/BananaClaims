@@ -12,8 +12,10 @@ public class Claim {
     private int chunkX;
     private int chunkZ;
     private String description;
+
     private Set<ClaimChunk> chunks = new HashSet<>();
     private ClaimFlags flags = new ClaimFlags();
+    private ClaimPopupSettings popupSettings = new ClaimPopupSettings();
 
     public Claim() {
     }
@@ -26,9 +28,12 @@ public class Claim {
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
         this.description = "";
+
         this.chunks = new HashSet<>();
         this.chunks.add(new ClaimChunk(dimension, chunkX, chunkZ));
+
         this.flags = new ClaimFlags();
+        this.popupSettings = new ClaimPopupSettings();
     }
 
     public String getName() {
@@ -94,6 +99,11 @@ public class Claim {
         return flags;
     }
 
+    public ClaimPopupSettings getPopupSettings() {
+        ensurePopupSettings();
+        return popupSettings;
+    }
+
     public boolean isOwner(UUID playerUuid) {
         return ownerUuid != null && ownerUuid.equals(playerUuid);
     }
@@ -111,6 +121,12 @@ public class Claim {
     private void ensureFlags() {
         if (flags == null) {
             flags = new ClaimFlags();
+        }
+    }
+
+    private void ensurePopupSettings() {
+        if (popupSettings == null) {
+            popupSettings = new ClaimPopupSettings();
         }
     }
 }
