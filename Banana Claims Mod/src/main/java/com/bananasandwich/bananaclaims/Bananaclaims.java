@@ -2,6 +2,7 @@ package com.bananasandwich.bananaclaims;
 
 import com.bananasandwich.bananaclaims.claim.ClaimManager;
 import com.bananasandwich.bananaclaims.command.ClaimCommand;
+import com.bananasandwich.bananaclaims.notification.ClaimNotificationManager;
 import com.bananasandwich.bananaclaims.storage.ClaimStorage;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -26,6 +27,8 @@ public class Bananaclaims implements ModInitializer {
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
 				ClaimCommand.register(dispatcher)
 		);
+
+		ClaimNotificationManager.register();
 	}
 
 	public static Identifier id(String path) {
