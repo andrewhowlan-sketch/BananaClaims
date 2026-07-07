@@ -77,6 +77,11 @@ public class Claim {
         chunks.add(new ClaimChunk(dimension, chunkX, chunkZ));
     }
 
+    public boolean removeChunk(String dimension, int chunkX, int chunkZ) {
+        ensureChunks();
+        return chunks.remove(new ClaimChunk(dimension, chunkX, chunkZ));
+    }
+
     public boolean containsChunk(String dimension, int chunkX, int chunkZ) {
         ensureChunks();
         return chunks.contains(new ClaimChunk(dimension, chunkX, chunkZ));
