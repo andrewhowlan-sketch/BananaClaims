@@ -4,6 +4,7 @@ import com.bananasandwich.bananaclaims.claim.ClaimManager;
 import com.bananasandwich.bananaclaims.command.ClaimCommand;
 import com.bananasandwich.bananaclaims.notification.ClaimNotificationManager;
 import com.bananasandwich.bananaclaims.protection.ClaimProtectionManager;
+import com.bananasandwich.bananaclaims.selection.SelectionManager;
 import com.bananasandwich.bananaclaims.storage.ClaimStorage;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -17,6 +18,7 @@ public class Bananaclaims implements ModInitializer {
 
 	public static final ClaimManager CLAIM_MANAGER = new ClaimManager();
 	public static final ClaimStorage CLAIM_STORAGE = new ClaimStorage();
+	public static final SelectionManager SELECTION_MANAGER = new SelectionManager();
 
 	@Override
 	public void onInitialize() {

@@ -18,6 +18,8 @@ public class ClaimCommand {
                             return 1;
                         })
 
+                        .then(SelectionClaimCommand.registerPos1())
+                        .then(SelectionClaimCommand.registerPos2())
                         .then(CreateClaimCommand.register())
                         .then(ExpandClaimCommand.register())
                         .then(ShrinkClaimCommand.register())
