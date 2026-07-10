@@ -1,5 +1,9 @@
 package com.bananasandwich.bananaclaims.claim;
 
+import com.bananasandwich.bananaclaims.claim.event.ClaimChangeEvent;
+import com.bananasandwich.bananaclaims.claim.event.ClaimChangeListener;
+import com.bananasandwich.bananaclaims.claim.event.ClaimChangeType;
+import com.bananasandwich.bananaclaims.claim.event.ClaimEventBus;
 import com.bananasandwich.bananaclaims.storage.ClaimStorage;
 
 import java.util.ArrayList;
@@ -13,12 +17,21 @@ public class ClaimManager {
 
     private final List<Claim> claims = new ArrayList<>();
     private final Map<ClaimChunkKey, Claim> chunkLookup = new HashMap<>();
+    private final ClaimEventBus eventBus = new ClaimEventBus();
 
     private ClaimStorage storage;
     private long revision = 0;
 
     public void setStorage(ClaimStorage storage) {
         this.storage = storage;
+    }
+
+    public void addChangeListener(ClaimChangeListener listener) {
+        eventBus.register(listener);
+    }
+
+    public void removeChangeListener(ClaimChangeListener listener) {
+        eventBus.unregister(listener);
     }
 
     public boolean addClaim(Claim claim) {
@@ -36,6 +49,8 @@ public class ClaimManager {
         rebuildChunkLookup();
         save();
 
+        publishChange(ClaimChangeType.CREATED, claim);
+
         return true;
     }
 
@@ -47,9 +62,14 @@ public class ClaimManager {
         }
 
         rebuildChunkLookup();
+        publishChange(ClaimChangeType.LOADED, null);
     }
 
-    public boolean removeClaim(String dimension, int chunkX, int chunkZ) {
+    public boolean removeClaim(
+            String dimension,
+            int chunkX,
+            int chunkZ
+    ) {
         Claim claim = chunkLookup.get(
                 new ClaimChunkKey(dimension, chunkX, chunkZ)
         );
@@ -63,6 +83,8 @@ public class ClaimManager {
         if (removed) {
             rebuildChunkLookup();
             save();
+
+            publishChange(ClaimChangeType.DELETED, claim);
         }
 
         return removed;
@@ -71,6 +93,8 @@ public class ClaimManager {
     public void saveClaims() {
         rebuildChunkLookup();
         save();
+
+        publishChange(ClaimChangeType.UPDATED, null);
     }
 
     public Optional<Claim> getClaimAt(
@@ -80,7 +104,11 @@ public class ClaimManager {
     ) {
         return Optional.ofNullable(
                 chunkLookup.get(
-                        new ClaimChunkKey(dimension, chunkX, chunkZ)
+                        new ClaimChunkKey(
+                                dimension,
+                                chunkX,
+                                chunkZ
+                        )
                 )
         );
     }
@@ -101,7 +129,11 @@ public class ClaimManager {
             int chunkZ
     ) {
         return chunkLookup.containsKey(
-                new ClaimChunkKey(dimension, chunkX, chunkZ)
+                new ClaimChunkKey(
+                        dimension,
+                        chunkX,
+                        chunkZ
+                )
         );
     }
 
@@ -125,6 +157,19 @@ public class ClaimManager {
         }
 
         revision++;
+    }
+
+    private void publishChange(
+            ClaimChangeType type,
+            Claim claim
+    ) {
+        eventBus.publish(
+                new ClaimChangeEvent(
+                        type,
+                        claim,
+                        revision
+                )
+        );
     }
 
     private void save() {
