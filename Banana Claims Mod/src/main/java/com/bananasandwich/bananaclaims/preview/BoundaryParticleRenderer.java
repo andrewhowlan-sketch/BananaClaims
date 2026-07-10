@@ -21,6 +21,12 @@ public final class BoundaryParticleRenderer {
                     PreviewSettings.CORNER_PARTICLE_SCALE
             );
 
+    private static final DustParticleOptions GUIDE_PARTICLE =
+            new DustParticleOptions(
+                    PreviewSettings.COLOR_RGB,
+                    PreviewSettings.GUIDE_PARTICLE_SCALE
+            );
+
     private static final DustParticleOptions SHADE_PARTICLE =
             new DustParticleOptions(
                     PreviewSettings.COLOR_RGB,
@@ -46,16 +52,21 @@ public final class BoundaryParticleRenderer {
             return;
         }
 
-        renderSurfaces(
+        /*
+         * Draw the cheapest and most important layers first so the boundary
+         * stays obvious even when a large preview reaches its shading budget.
+         */
+        renderGuideBands(
                 level,
                 player,
                 preview
         );
 
-        double lineSpacing =
-                PreviewSettings.calculateLineSpacing(
-                        preview.totalLineLength()
-                );
+        renderLocalWallShading(
+                level,
+                player,
+                preview
+        );
 
         Set<PreviewPoint> corners = new HashSet<>();
 
@@ -64,7 +75,10 @@ public final class BoundaryParticleRenderer {
                     level,
                     player,
                     line,
-                    lineSpacing
+                    PreviewSettings.calculateLineSpacing(line),
+                    LINE_PARTICLE,
+                    PreviewSettings.LINE_PARTICLE_COUNT,
+                    PreviewSettings.LINE_PARTICLE_SPREAD
             );
 
             corners.add(
@@ -93,95 +107,179 @@ public final class BoundaryParticleRenderer {
         }
     }
 
-    private static void renderSurfaces(
+    private static void renderGuideBands(
             ServerLevel level,
             ServerPlayer player,
             BoundaryPreview preview
     ) {
-        if (preview.surfaces().isEmpty()) {
-            return;
-        }
-
-        double sideSpacing =
-                PreviewSettings.calculateSideShadeSpacing(
-                        preview.totalVerticalSurfaceArea()
-                );
-
-        double horizontalSpacing =
-                PreviewSettings.calculateHorizontalShadeSpacing(
-                        preview.totalHorizontalSurfaceArea()
-                );
-
         for (BoundarySurface surface : preview.surfaces()) {
-            if (surface.isVertical()) {
-                renderSurface(
+            if (!surface.isVertical()) {
+                continue;
+            }
+
+            double minY = surface.originY();
+            double maxY =
+                    surface.originY()
+                            + surface.axisVY();
+
+            if (maxY < minY) {
+                double temporary = minY;
+                minY = maxY;
+                maxY = temporary;
+            }
+
+            int firstBand =
+                    (int) Math.ceil(
+                            minY
+                                    / PreviewSettings.GUIDE_BAND_INTERVAL
+                    ) * PreviewSettings.GUIDE_BAND_INTERVAL;
+
+            for (double y = firstBand;
+                 y <= maxY;
+                 y += PreviewSettings.GUIDE_BAND_INTERVAL) {
+                BoundaryLine guideLine =
+                        horizontalLineAtY(
+                                surface,
+                                y
+                        );
+
+                renderLine(
                         level,
                         player,
-                        surface,
-                        sideSpacing,
-                        PreviewSettings.SIDE_SHADE_PARTICLE_COUNT,
-                        PreviewSettings.SIDE_SHADE_PARTICLE_SPREAD
-                );
-            } else {
-                renderSurface(
-                        level,
-                        player,
-                        surface,
-                        horizontalSpacing,
-                        PreviewSettings.HORIZONTAL_SHADE_PARTICLE_COUNT,
-                        PreviewSettings.HORIZONTAL_SHADE_PARTICLE_SPREAD
+                        guideLine,
+                        PreviewSettings.GUIDE_LINE_SPACING,
+                        GUIDE_PARTICLE,
+                        PreviewSettings.GUIDE_PARTICLE_COUNT,
+                        PreviewSettings.GUIDE_PARTICLE_SPREAD
                 );
             }
         }
     }
 
-    private static void renderSurface(
+    private static void renderLocalWallShading(
+            ServerLevel level,
+            ServerPlayer player,
+            BoundaryPreview preview
+    ) {
+        int remainingBudget =
+                PreviewSettings.MAX_LOCAL_SHADE_POINTS_PER_RENDER;
+
+        double playerMinY =
+                player.getY()
+                        - PreviewSettings.LOCAL_SHADE_BELOW_PLAYER;
+
+        double playerMaxY =
+                player.getY()
+                        + PreviewSettings.LOCAL_SHADE_ABOVE_PLAYER;
+
+        for (BoundarySurface surface : preview.surfaces()) {
+            if (!surface.isVertical()
+                    || remainingBudget <= 0) {
+                continue;
+            }
+
+            remainingBudget = renderLocalSurface(
+                    level,
+                    player,
+                    surface,
+                    playerMinY,
+                    playerMaxY,
+                    remainingBudget
+            );
+        }
+    }
+
+    private static int renderLocalSurface(
             ServerLevel level,
             ServerPlayer player,
             BoundarySurface surface,
-            double spacing,
-            int particleCount,
-            double particleSpread
+            double playerMinY,
+            double playerMaxY,
+            int remainingBudget
     ) {
-        double width = surface.width();
-        double height = surface.height();
+        double surfaceStartY =
+                surface.originY();
 
-        if (width <= 0.0D || height <= 0.0D) {
-            return;
+        double surfaceEndY =
+                surface.originY()
+                        + surface.axisVY();
+
+        double surfaceMinY =
+                Math.min(
+                        surfaceStartY,
+                        surfaceEndY
+                );
+
+        double surfaceMaxY =
+                Math.max(
+                        surfaceStartY,
+                        surfaceEndY
+                );
+
+        double minY = Math.max(
+                surfaceMinY,
+                playerMinY
+        );
+
+        double maxY = Math.min(
+                surfaceMaxY,
+                playerMaxY
+        );
+
+        if (maxY <= minY) {
+            return remainingBudget;
         }
+
+        double width = surface.width();
+        double visibleHeight = maxY - minY;
 
         int stepsU = Math.max(
                 1,
-                (int) Math.ceil(width / spacing)
+                (int) Math.ceil(
+                        width
+                                / PreviewSettings.LOCAL_SHADE_SPACING
+                )
         );
 
-        int stepsV = Math.max(
+        int stepsY = Math.max(
                 1,
-                (int) Math.ceil(height / spacing)
+                (int) Math.ceil(
+                        visibleHeight
+                                / PreviewSettings.LOCAL_SHADE_SPACING
+                )
         );
 
-        for (int u = 1; u < stepsU; u++) {
+        for (int u = 1;
+             u < stepsU && remainingBudget > 0;
+             u++) {
             double progressU =
                     (double) u / stepsU;
 
-            for (int v = 1; v < stepsV; v++) {
-                double progressV =
-                        (double) v / stepsV;
+            double x =
+                    surface.originX()
+                            + surface.axisUX() * progressU;
 
-                double x =
-                        surface.originX()
-                                + surface.axisUX() * progressU
-                                + surface.axisVX() * progressV;
+            double z =
+                    surface.originZ()
+                            + surface.axisUZ() * progressU;
+
+            for (int yStep = 1;
+                 yStep < stepsY && remainingBudget > 0;
+                 yStep++) {
+                double progressY =
+                        (double) yStep / stepsY;
 
                 double y =
-                        surface.originY()
-                                + surface.axisUY() * progressU
-                                + surface.axisVY() * progressV;
+                        minY
+                                + visibleHeight * progressY;
 
-                double z =
-                        surface.originZ()
-                                + surface.axisUZ() * progressU
-                                + surface.axisVZ() * progressV;
+                if (!isWithinRenderRadius(
+                        player,
+                        x,
+                        z
+                )) {
+                    continue;
+                }
 
                 sendLongDistanceParticles(
                         level,
@@ -190,18 +288,41 @@ public final class BoundaryParticleRenderer {
                         x,
                         y,
                         z,
-                        particleCount,
-                        particleSpread
+                        PreviewSettings.LOCAL_SHADE_PARTICLE_COUNT,
+                        PreviewSettings.LOCAL_SHADE_PARTICLE_SPREAD
                 );
+
+                remainingBudget--;
             }
         }
+
+        return remainingBudget;
+    }
+
+    private static BoundaryLine horizontalLineAtY(
+            BoundarySurface surface,
+            double y
+    ) {
+        return new BoundaryLine(
+                surface.originX(),
+                y,
+                surface.originZ(),
+                surface.originX()
+                        + surface.axisUX(),
+                y,
+                surface.originZ()
+                        + surface.axisUZ()
+        );
     }
 
     private static void renderLine(
             ServerLevel level,
             ServerPlayer player,
             BoundaryLine line,
-            double spacing
+            double spacing,
+            DustParticleOptions particle,
+            int particleCount,
+            double particleSpread
     ) {
         double length = line.length();
 
@@ -210,7 +331,9 @@ public final class BoundaryParticleRenderer {
                 (int) Math.ceil(length / spacing)
         );
 
-        for (int step = 0; step <= steps; step++) {
+        for (int step = 0;
+             step <= steps;
+             step++) {
             double progress =
                     (double) step / steps;
 
@@ -232,15 +355,23 @@ public final class BoundaryParticleRenderer {
                     progress
             );
 
+            if (!isWithinRenderRadius(
+                    player,
+                    x,
+                    z
+            )) {
+                continue;
+            }
+
             sendLongDistanceParticles(
                     level,
                     player,
-                    LINE_PARTICLE,
+                    particle,
                     x,
                     y,
                     z,
-                    PreviewSettings.LINE_PARTICLE_COUNT,
-                    PreviewSettings.LINE_PARTICLE_SPREAD
+                    particleCount,
+                    particleSpread
             );
         }
     }
@@ -250,6 +381,14 @@ public final class BoundaryParticleRenderer {
             ServerPlayer player,
             PreviewPoint corner
     ) {
+        if (!isWithinRenderRadius(
+                player,
+                corner.x(),
+                corner.z()
+        )) {
+            return;
+        }
+
         sendLongDistanceParticles(
                 level,
                 player,
@@ -262,6 +401,22 @@ public final class BoundaryParticleRenderer {
         );
     }
 
+    private static boolean isWithinRenderRadius(
+            ServerPlayer player,
+            double x,
+            double z
+    ) {
+        double deltaX =
+                x - player.getX();
+
+        double deltaZ =
+                z - player.getZ();
+
+        return deltaX * deltaX
+                + deltaZ * deltaZ
+                <= PreviewSettings.RENDER_RADIUS_SQUARED;
+    }
+
     private static void sendLongDistanceParticles(
             ServerLevel level,
             ServerPlayer player,
@@ -272,10 +427,6 @@ public final class BoundaryParticleRenderer {
             int count,
             double spread
     ) {
-        /*
-         * Both flags are enabled so Minecraft treats these preview
-         * particles as forced/long-distance particles for the target player.
-         */
         level.sendParticles(
                 player,
                 particle,
@@ -308,5 +459,6 @@ public final class BoundaryParticleRenderer {
     ) {
     }
 }
+
 
 
