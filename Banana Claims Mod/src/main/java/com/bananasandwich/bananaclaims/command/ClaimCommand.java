@@ -1,6 +1,7 @@
 package com.bananasandwich.bananaclaims.command;
 
 import com.bananasandwich.bananaclaims.command.member.MemberCommand;
+import com.bananasandwich.bananaclaims.command.subowner.SubOwnerCommand;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -36,6 +37,7 @@ public class ClaimCommand {
                         .then(RenameClaimCommand.register())
                         .then(DescriptionClaimCommand.register())
                         .then(MemberCommand.register())
+                        .then(SubOwnerCommand.register())
                         .then(TransferClaimCommand.register())
                         .then(FlagClaimCommand.register())
                         .then(PopupClaimCommand.register())

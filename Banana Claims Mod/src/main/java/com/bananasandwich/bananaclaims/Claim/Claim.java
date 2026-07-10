@@ -19,6 +19,7 @@ public class Claim {
 
     private Set<ClaimChunk> chunks = new HashSet<>();
     private Set<ClaimMember> members = new HashSet<>();
+    private Set<ClaimSubOwner> subOwners = new HashSet<>();
 
     private ClaimFlags flags = new ClaimFlags();
     private ClaimPopupSettings popupSettings = new ClaimPopupSettings();
@@ -54,6 +55,7 @@ public class Claim {
         );
 
         this.members = new HashSet<>();
+        this.subOwners = new HashSet<>();
         this.flags = new ClaimFlags();
         this.popupSettings = new ClaimPopupSettings();
     }
@@ -100,6 +102,7 @@ public class Claim {
         String previousOwnerName = getOwnerName();
 
         removeMember(newOwnerUuid);
+        removeSubOwner(newOwnerUuid);
 
         ownerUuid = newOwnerUuid;
         ownerName = newOwnerName == null ? "" : newOwnerName;
@@ -209,7 +212,7 @@ public class Claim {
     }
 
     public boolean addMember(UUID playerUuid, String playerName) {
-        if (playerUuid == null || isOwner(playerUuid)) {
+        if (playerUuid == null || isOwner(playerUuid) || isSubOwner(playerUuid)) {
             return false;
         }
 
@@ -247,8 +250,92 @@ public class Claim {
         return getMember(playerUuid).isPresent();
     }
 
+
+    public Set<ClaimSubOwner> getSubOwners() {
+        ensureSubOwners();
+        return Set.copyOf(subOwners);
+    }
+
+    public Optional<ClaimSubOwner> getSubOwner(UUID playerUuid) {
+        if (playerUuid == null) {
+            return Optional.empty();
+        }
+
+        ensureSubOwners();
+
+        return subOwners.stream()
+                .filter(subOwner ->
+                        playerUuid.equals(subOwner.getUuid())
+                )
+                .findFirst();
+    }
+
+    public boolean addSubOwner(UUID playerUuid, String playerName) {
+        if (playerUuid == null || isOwner(playerUuid)) {
+            return false;
+        }
+
+        ensureSubOwners();
+
+        Optional<ClaimSubOwner> existingSubOwner =
+                getSubOwner(playerUuid);
+
+        if (existingSubOwner.isPresent()) {
+            existingSubOwner.get().setName(playerName);
+            return false;
+        }
+
+        removeMember(playerUuid);
+
+        return subOwners.add(
+                new ClaimSubOwner(
+                        playerUuid,
+                        playerName
+                )
+        );
+    }
+
+    public boolean removeSubOwner(UUID playerUuid) {
+        if (playerUuid == null) {
+            return false;
+        }
+
+        ensureSubOwners();
+
+        return subOwners.removeIf(subOwner ->
+                playerUuid.equals(subOwner.getUuid())
+        );
+    }
+
+    public boolean demoteSubOwnerToMember(UUID playerUuid) {
+        Optional<ClaimSubOwner> optionalSubOwner = getSubOwner(playerUuid);
+
+        if (optionalSubOwner.isEmpty()) {
+            return false;
+        }
+
+        ClaimSubOwner subOwner = optionalSubOwner.get();
+
+        if (!removeSubOwner(playerUuid)) {
+            return false;
+        }
+
+        addMember(
+                subOwner.getUuid(),
+                subOwner.getName()
+        );
+
+        return true;
+    }
+
+    public boolean isSubOwner(UUID playerUuid) {
+        return getSubOwner(playerUuid).isPresent();
+    }
+
     public boolean canAccess(UUID playerUuid) {
-        return isOwner(playerUuid) || isMember(playerUuid);
+        return isOwner(playerUuid)
+                || isSubOwner(playerUuid)
+                || isMember(playerUuid);
     }
 
     public boolean hasAccess(UUID playerUuid) {
@@ -256,7 +343,7 @@ public class Claim {
     }
 
     public boolean canManage(UUID playerUuid) {
-        return isOwner(playerUuid);
+        return isOwner(playerUuid) || isSubOwner(playerUuid);
     }
 
     public boolean canResize(UUID playerUuid) {
@@ -321,6 +408,16 @@ public class Claim {
 
         members.removeIf(member ->
                 member == null || member.getUuid() == null
+        );
+    }
+
+    private void ensureSubOwners() {
+        if (subOwners == null) {
+            subOwners = new HashSet<>();
+        }
+
+        subOwners.removeIf(subOwner ->
+                subOwner == null || subOwner.getUuid() == null
         );
     }
 

@@ -187,6 +187,19 @@ public final class AddMemberCommand {
             return 0;
         }
 
+        if (claim.isSubOwner(target.getUUID())) {
+            source.sendFailure(
+                    Component.literal(
+                            target.getName().getString()
+                                    + " is already a subowner of claim \""
+                                    + claim.getName()
+                                    + "\"."
+                    )
+            );
+
+            return 0;
+        }
+
         if (claim.isMember(target.getUUID())) {
             source.sendFailure(
                     Component.literal(

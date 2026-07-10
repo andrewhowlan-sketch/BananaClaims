@@ -4,6 +4,7 @@ import com.bananasandwich.bananaclaims.Bananaclaims;
 import com.bananasandwich.bananaclaims.claim.Claim;
 import com.bananasandwich.bananaclaims.claim.ClaimChunk;
 import com.bananasandwich.bananaclaims.claim.ClaimMember;
+import com.bananasandwich.bananaclaims.claim.ClaimSubOwner;
 import com.bananasandwich.bananaclaims.claim.event.ClaimChangeEvent;
 import com.bananasandwich.bananaclaims.claim.event.ClaimChangeListener;
 import com.flowpowered.math.vector.Vector2d;
@@ -533,23 +534,14 @@ public final class BlueMapBridge {
     private static String createDetail(
             Claim claim
     ) {
+        List<String> subOwnerNames =
+                getSortedSubOwnerNames(claim);
+
         List<String> memberNames =
                 getSortedMemberNames(claim);
 
-        String membersHtml;
-
-        if (memberNames.isEmpty()) {
-            membersHtml = "None";
-        } else {
-            membersHtml = memberNames.stream()
-                    .map(BlueMapBridge::escapeHtml)
-                    .map(name -> "&#8226; " + name)
-                    .reduce(
-                            (first, second) ->
-                                    first + "<br>" + second
-                    )
-                    .orElse("None");
-        }
+        String subOwnersHtml = toHtmlList(subOwnerNames);
+        String membersHtml = toHtmlList(memberNames);
 
         String description =
                 claim.getDescription().isBlank()
@@ -563,6 +555,11 @@ public final class BlueMapBridge {
                 + "Owner: "
                 + escapeHtml(claim.getOwnerName())
                 + "<br>"
+                + "Subowners ("
+                + subOwnerNames.size()
+                + "):<br>"
+                + subOwnersHtml
+                + "<br>"
                 + "Members ("
                 + memberNames.size()
                 + "):<br>"
@@ -574,6 +571,37 @@ public final class BlueMapBridge {
                 + "Description: "
                 + escapeHtml(description)
                 + "</div>";
+    }
+
+    private static String toHtmlList(
+            List<String> names
+    ) {
+        if (names.isEmpty()) {
+            return "None";
+        }
+
+        return names.stream()
+                .map(BlueMapBridge::escapeHtml)
+                .map(name -> "&#8226; " + name)
+                .reduce(
+                        (first, second) ->
+                                first + "<br>" + second
+                )
+                .orElse("None");
+    }
+
+    private static List<String> getSortedSubOwnerNames(
+            Claim claim
+    ) {
+        return claim.getSubOwners()
+                .stream()
+                .map(ClaimSubOwner::getName)
+                .filter(name ->
+                        name != null
+                                && !name.isBlank()
+                )
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList();
     }
 
     private static List<String> getSortedMemberNames(
@@ -621,6 +649,17 @@ public final class BlueMapBridge {
                         .sorted()
                         .toList();
 
+        List<String> sortedSubOwners =
+                claim.getSubOwners()
+                        .stream()
+                        .map(subOwner ->
+                                subOwner.getUuid()
+                                        + "|"
+                                        + subOwner.getName()
+                        )
+                        .sorted()
+                        .toList();
+
         List<String> sortedMembers =
                 claim.getMembers()
                         .stream()
@@ -639,6 +678,7 @@ public final class BlueMapBridge {
                 claim.getOwnerName(),
                 claim.getDescription(),
                 sortedChunks,
+                sortedSubOwners,
                 sortedMembers
         );
     }

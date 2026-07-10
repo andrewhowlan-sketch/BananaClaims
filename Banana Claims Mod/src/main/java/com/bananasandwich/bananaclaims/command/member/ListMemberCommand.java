@@ -2,6 +2,7 @@ package com.bananasandwich.bananaclaims.command.member;
 
 import com.bananasandwich.bananaclaims.claim.Claim;
 import com.bananasandwich.bananaclaims.claim.ClaimMember;
+import com.bananasandwich.bananaclaims.claim.ClaimSubOwner;
 import com.bananasandwich.bananaclaims.command.ClaimResolver;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
@@ -78,6 +79,17 @@ public final class ListMemberCommand {
         if (!ownerName.isBlank()) {
             people.add(ownerName + " (Owner)");
         }
+
+        claim.getSubOwners()
+                .stream()
+                .map(ClaimSubOwner::getName)
+                .filter(name ->
+                        name != null
+                                && !name.isBlank()
+                )
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .map(name -> name + " (Subowner)")
+                .forEach(people::add);
 
         claim.getMembers()
                 .stream()

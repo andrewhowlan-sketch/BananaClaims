@@ -2,6 +2,7 @@ package com.bananasandwich.bananaclaims.command;
 
 import com.bananasandwich.bananaclaims.claim.Claim;
 import com.bananasandwich.bananaclaims.claim.ClaimMember;
+import com.bananasandwich.bananaclaims.claim.ClaimSubOwner;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
@@ -100,6 +101,22 @@ public class InfoClaimCommand {
                         ? "No description."
                         : claim.getDescription();
 
+        List<String> subOwnerNames =
+                claim.getSubOwners()
+                        .stream()
+                        .map(ClaimSubOwner::getName)
+                        .filter(name ->
+                                name != null
+                                        && !name.isBlank()
+                        )
+                        .sorted(String.CASE_INSENSITIVE_ORDER)
+                        .toList();
+
+        String subOwnersText =
+                subOwnerNames.isEmpty()
+                        ? "None"
+                        : String.join(", ", subOwnerNames);
+
         List<String> memberNames =
                 claim.getMembers()
                         .stream()
@@ -122,6 +139,10 @@ public class InfoClaimCommand {
                                 + claim.getName()
                                 + "\nOwner: "
                                 + claim.getOwnerName()
+                                + "\nSubowners ("
+                                + subOwnerNames.size()
+                                + "): "
+                                + subOwnersText
                                 + "\nMembers ("
                                 + memberNames.size()
                                 + "): "
