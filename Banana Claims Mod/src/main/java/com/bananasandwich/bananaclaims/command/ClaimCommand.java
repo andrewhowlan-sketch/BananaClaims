@@ -20,6 +20,7 @@ public class ClaimCommand {
 
                         .then(SelectionClaimCommand.registerPos1())
                         .then(SelectionClaimCommand.registerPos2())
+                        .then(CreateAreaClaimCommand.register())
                         .then(CreateClaimCommand.register())
                         .then(ExpandClaimCommand.register())
                         .then(ShrinkClaimCommand.register())

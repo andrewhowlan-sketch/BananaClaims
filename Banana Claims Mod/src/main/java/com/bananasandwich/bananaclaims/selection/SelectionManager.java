@@ -12,14 +12,16 @@ public class SelectionManager {
 
     public void setPos1(UUID playerUuid, String dimension, BlockPos position) {
         ClaimSelection selection = getOrCreateSelection(playerUuid);
-        selection.setDimension(dimension);
+
         selection.setPos1(position);
+        selection.setPos1Dimension(dimension);
     }
 
     public void setPos2(UUID playerUuid, String dimension, BlockPos position) {
         ClaimSelection selection = getOrCreateSelection(playerUuid);
-        selection.setDimension(dimension);
+
         selection.setPos2(position);
+        selection.setPos2Dimension(dimension);
     }
 
     public ClaimSelection getSelection(UUID playerUuid) {
@@ -31,6 +33,9 @@ public class SelectionManager {
     }
 
     private ClaimSelection getOrCreateSelection(UUID playerUuid) {
-        return selections.computeIfAbsent(playerUuid, uuid -> new ClaimSelection());
+        return selections.computeIfAbsent(
+                playerUuid,
+                uuid -> new ClaimSelection()
+        );
     }
 }

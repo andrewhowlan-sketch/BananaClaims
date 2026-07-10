@@ -13,7 +13,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class ClaimNotificationManager {
-    private static final Map<UUID, LastKnownClaim> LAST_KNOWN_CLAIMS = new HashMap<>();
+
+    private static final Map<UUID, PlayerLocationState> PLAYER_STATES =
+            new HashMap<>();
+
     private static int tickCounter = 0;
 
     public static void register() {
@@ -31,9 +34,9 @@ public class ClaimNotificationManager {
             }
         });
 
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            LAST_KNOWN_CLAIMS.remove(handler.player.getUUID());
-        });
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
+                PLAYER_STATES.remove(handler.player.getUUID())
+        );
     }
 
     private static void checkPlayerClaimLocation(ServerPlayer player) {
@@ -41,33 +44,61 @@ public class ClaimNotificationManager {
 
         String dimension = player.level().dimension().toString();
         ChunkPos chunkPos = player.chunkPosition();
+        long claimRevision = Bananaclaims.CLAIM_MANAGER.getRevision();
 
-        Optional<Claim> currentClaim = Bananaclaims.CLAIM_MANAGER.getClaimAt(
+        PlayerLocationState previousState = PLAYER_STATES.get(playerUuid);
+
+        if (previousState != null
+                && previousState.matchesLocation(
                 dimension,
                 chunkPos.x(),
                 chunkPos.z()
-        );
+        )
+                && previousState.claimRevision == claimRevision) {
+            return;
+        }
+
+        Optional<Claim> currentClaim =
+                Bananaclaims.CLAIM_MANAGER.getClaimAt(
+                        dimension,
+                        chunkPos.x(),
+                        chunkPos.z()
+                );
 
         LastKnownClaim currentKnownClaim = currentClaim
                 .map(ClaimNotificationManager::toLastKnownClaim)
                 .orElse(null);
 
-        LastKnownClaim previousKnownClaim = LAST_KNOWN_CLAIMS.get(playerUuid);
+        LastKnownClaim previousKnownClaim = previousState == null
+                ? null
+                : previousState.claim;
 
-        if (sameClaim(previousKnownClaim, currentKnownClaim)) {
-            return;
+        if (!sameClaim(previousKnownClaim, currentKnownClaim)) {
+            if (previousKnownClaim != null) {
+                PopupRenderer.showLeave(
+                        player,
+                        previousKnownClaim.claim
+                );
+            }
+
+            if (currentKnownClaim != null) {
+                PopupRenderer.showEnter(
+                        player,
+                        currentKnownClaim.claim
+                );
+            }
         }
 
-        if (previousKnownClaim != null) {
-            PopupRenderer.showLeave(player, previousKnownClaim.claim);
-        }
-
-        if (currentKnownClaim != null) {
-            PopupRenderer.showEnter(player, currentKnownClaim.claim);
-            LAST_KNOWN_CLAIMS.put(playerUuid, currentKnownClaim);
-        } else {
-            LAST_KNOWN_CLAIMS.remove(playerUuid);
-        }
+        PLAYER_STATES.put(
+                playerUuid,
+                new PlayerLocationState(
+                        dimension,
+                        chunkPos.x(),
+                        chunkPos.z(),
+                        claimRevision,
+                        currentKnownClaim
+                )
+        );
     }
 
     private static LastKnownClaim toLastKnownClaim(Claim claim) {
@@ -77,7 +108,10 @@ public class ClaimNotificationManager {
         );
     }
 
-    private static boolean sameClaim(LastKnownClaim first, LastKnownClaim second) {
+    private static boolean sameClaim(
+            LastKnownClaim first,
+            LastKnownClaim second
+    ) {
         if (first == null && second == null) {
             return true;
         }
@@ -89,7 +123,41 @@ public class ClaimNotificationManager {
         return first.key.equals(second.key);
     }
 
+    private static class PlayerLocationState {
+
+        private final String dimension;
+        private final int chunkX;
+        private final int chunkZ;
+        private final long claimRevision;
+        private final LastKnownClaim claim;
+
+        private PlayerLocationState(
+                String dimension,
+                int chunkX,
+                int chunkZ,
+                long claimRevision,
+                LastKnownClaim claim
+        ) {
+            this.dimension = dimension;
+            this.chunkX = chunkX;
+            this.chunkZ = chunkZ;
+            this.claimRevision = claimRevision;
+            this.claim = claim;
+        }
+
+        private boolean matchesLocation(
+                String dimension,
+                int chunkX,
+                int chunkZ
+        ) {
+            return this.dimension.equals(dimension)
+                    && this.chunkX == chunkX
+                    && this.chunkZ == chunkZ;
+        }
+    }
+
     private static class LastKnownClaim {
+
         private final String key;
         private final Claim claim;
 
