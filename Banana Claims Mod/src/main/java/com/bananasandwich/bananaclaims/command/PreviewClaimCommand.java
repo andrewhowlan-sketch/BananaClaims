@@ -2,15 +2,12 @@ package com.bananasandwich.bananaclaims.command;
 
 import com.bananasandwich.bananaclaims.Bananaclaims;
 import com.bananasandwich.bananaclaims.claim.Claim;
-import com.bananasandwich.bananaclaims.preview.BoundaryPreview;
-import com.bananasandwich.bananaclaims.preview.BoundaryShapeFactory;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Comparator;
@@ -164,12 +161,17 @@ public final class PreviewClaimCommand {
     ) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
 
-        boolean stopped =
+        boolean stoppedLegacy =
                 Bananaclaims.BOUNDARY_PREVIEW_MANAGER.stop(
                         player.getUUID()
                 );
 
-        if (!stopped) {
+        boolean stoppedV2 =
+                Bananaclaims.DISPLAY_PREVIEW_V2_MANAGER.stop(
+                        player.getUUID()
+                );
+
+        if (!stoppedLegacy && !stoppedV2) {
             source.sendFailure(
                     Component.literal(
                             "You do not have an active claim preview."
@@ -194,9 +196,8 @@ public final class PreviewClaimCommand {
             ServerPlayer player,
             Claim claim
     ) {
-        ServerLevel level = player.level();
-
-        if (!level.dimension()
+        if (!player.level()
+                .dimension()
                 .toString()
                 .equals(claim.getDimension())) {
             source.sendFailure(
@@ -208,33 +209,32 @@ public final class PreviewClaimCommand {
             return 0;
         }
 
-        BoundaryPreview preview =
-                BoundaryShapeFactory.fromClaim(
-                        claim,
-                        level.getMinY(),
-                        level.getMaxY()
-                );
+        Bananaclaims.BOUNDARY_PREVIEW_MANAGER.stop(
+                player.getUUID()
+        );
 
-        if (preview == null) {
+        boolean created =
+                Bananaclaims.DISPLAY_PREVIEW_V2_MANAGER
+                        .showClaimDisplay(
+                                player,
+                                claim
+                        );
+
+        if (!created) {
             source.sendFailure(
                     Component.literal(
-                            "Unable to create a preview for that claim."
+                            "Unable to create a solid preview for that claim."
                     )
             );
 
             return 0;
         }
 
-        Bananaclaims.BOUNDARY_PREVIEW_MANAGER.show(
-                player,
-                preview
-        );
-
         source.sendSuccess(
                 () -> Component.literal(
-                        "Showing the 3D boundary for claim \""
+                        "Showing the solid terrain-following boundary for claim \""
                                 + claim.getName()
-                                + "\" for 20 seconds."
+                                + "\" for 10 seconds."
                 ),
                 false
         );
@@ -260,4 +260,5 @@ public final class PreviewClaimCommand {
                 .orElse(Double.MAX_VALUE);
     }
 }
+
 

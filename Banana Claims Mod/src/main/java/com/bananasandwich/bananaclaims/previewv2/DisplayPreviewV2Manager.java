@@ -1,11 +1,16 @@
 package com.bananasandwich.bananaclaims.previewv2;
 
+import com.bananasandwich.bananaclaims.claim.Claim;
+import com.bananasandwich.bananaclaims.claim.ClaimChunk;
+import com.bananasandwich.bananaclaims.selection.ClaimSelection;
 import com.mojang.math.Transformation;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -15,9 +20,12 @@ import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public final class DisplayPreviewV2Manager {
@@ -52,6 +60,219 @@ public final class DisplayPreviewV2Manager {
         ServerTickEvents.END_SERVER_TICK.register(
                 this::tick
         );
+    }
+
+    public boolean stop(
+            UUID playerUuid
+    ) {
+        if (playerUuid == null) {
+            return false;
+        }
+
+        TestDisplaySession existing =
+                sessions.remove(playerUuid);
+
+        if (existing == null) {
+            return false;
+        }
+
+        discardAll(
+                existing.displays()
+        );
+
+        return true;
+    }
+
+    public boolean showClaimDisplay(
+            ServerPlayer player,
+            Claim claim
+    ) {
+        if (player == null
+                || claim == null
+                || claim.getChunks().isEmpty()) {
+            return false;
+        }
+
+        ServerLevel level =
+                player.level();
+
+        if (!level.dimension()
+                .toString()
+                .equals(claim.getDimension())) {
+            return false;
+        }
+
+        MinecraftServer server =
+                level.getServer();
+
+        if (server == null) {
+            return false;
+        }
+
+        removeExistingSession(
+                player.getUUID()
+        );
+
+        List<PerimeterEdge> perimeterEdges =
+                createClaimPerimeterEdges(claim);
+
+        if (perimeterEdges.isEmpty()) {
+            return false;
+        }
+
+        List<Display.BlockDisplay> displays =
+                new ArrayList<>();
+
+        for (PerimeterEdge edge : perimeterEdges) {
+            if (edge.startZ() == edge.endZ()) {
+                appendContouredXEdge(
+                        level,
+                        displays,
+                        edge.startX(),
+                        edge.endX(),
+                        edge.startZ()
+                );
+            } else {
+                appendContouredZEdge(
+                        level,
+                        displays,
+                        edge.startZ(),
+                        edge.endZ(),
+                        edge.startX()
+                );
+            }
+        }
+
+        if (displays.isEmpty()) {
+            return false;
+        }
+
+        long currentTick =
+                server.getTickCount();
+
+        sessions.put(
+                player.getUUID(),
+                new TestDisplaySession(
+                        List.copyOf(displays),
+                        currentTick
+                                + TEST_DURATION_TICKS
+                )
+        );
+
+        return true;
+    }
+
+    public boolean showSelectionDisplay(
+            ServerPlayer player,
+            ClaimSelection selection
+    ) {
+        if (player == null
+                || selection == null
+                || !selection.hasBothPositions()
+                || !selection.isSameDimension()) {
+            return false;
+        }
+
+        ServerLevel level =
+                player.level();
+
+        String currentDimension =
+                level.dimension()
+                        .toString();
+
+        if (!currentDimension.equals(
+                selection.getPos1Dimension()
+        )) {
+            return false;
+        }
+
+        MinecraftServer server =
+                level.getServer();
+
+        if (server == null) {
+            return false;
+        }
+
+        removeExistingSession(
+                player.getUUID()
+        );
+
+        int minX =
+                Math.min(
+                        selection.getPos1().getX(),
+                        selection.getPos2().getX()
+                );
+
+        int maxX =
+                Math.max(
+                        selection.getPos1().getX(),
+                        selection.getPos2().getX()
+                ) + 1;
+
+        int minZ =
+                Math.min(
+                        selection.getPos1().getZ(),
+                        selection.getPos2().getZ()
+                );
+
+        int maxZ =
+                Math.max(
+                        selection.getPos1().getZ(),
+                        selection.getPos2().getZ()
+                ) + 1;
+
+        List<Display.BlockDisplay> displays =
+                new ArrayList<>();
+
+        appendContouredXEdge(
+                level,
+                displays,
+                minX,
+                maxX,
+                minZ
+        );
+
+        appendContouredXEdge(
+                level,
+                displays,
+                minX,
+                maxX,
+                maxZ
+        );
+
+        appendContouredZEdge(
+                level,
+                displays,
+                minZ,
+                maxZ,
+                minX
+        );
+
+        appendContouredZEdge(
+                level,
+                displays,
+                minZ,
+                maxZ,
+                maxX
+        );
+
+        if (displays.isEmpty()) {
+            return false;
+        }
+
+        long currentTick =
+                server.getTickCount();
+
+        sessions.put(
+                player.getUUID(),
+                new TestDisplaySession(
+                        List.copyOf(displays),
+                        currentTick
+                                + TEST_DURATION_TICKS
+                )
+        );
+
+        return true;
     }
 
     public boolean showTestDisplay(
@@ -298,11 +519,42 @@ public final class DisplayPreviewV2Manager {
             int x,
             int z
     ) {
-        return level.getHeight(
-                Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                x,
-                z
-        );
+        int topY =
+                level.getHeight(
+                        Heightmap.Types.MOTION_BLOCKING,
+                        x,
+                        z
+                ) - 1;
+
+        int minimumY =
+                level.getMinY();
+
+        BlockPos.MutableBlockPos position =
+                new BlockPos.MutableBlockPos(
+                        x,
+                        topY,
+                        z
+                );
+
+        while (topY >= minimumY) {
+            position.set(
+                    x,
+                    topY,
+                    z
+            );
+
+            var blockState =
+                    level.getBlockState(position);
+
+            if (!blockState.is(BlockTags.LOGS)
+                    && !blockState.is(BlockTags.LEAVES)) {
+                return topY + 1;
+            }
+
+            topY--;
+        }
+
+        return minimumY;
     }
 
     private static void addBeam(
@@ -376,6 +628,83 @@ public final class DisplayPreviewV2Manager {
         displays.add(display);
     }
 
+    private static List<PerimeterEdge> createClaimPerimeterEdges(
+            Claim claim
+    ) {
+        Set<PerimeterEdge> edges =
+                new HashSet<>();
+
+        for (ClaimChunk chunk : claim.getChunks()) {
+            int minX =
+                    chunk.getChunkX() * 16;
+
+            int minZ =
+                    chunk.getChunkZ() * 16;
+
+            int maxX =
+                    minX + 16;
+
+            int maxZ =
+                    minZ + 16;
+
+            toggleEdge(
+                    edges,
+                    new PerimeterEdge(
+                            minX,
+                            minZ,
+                            maxX,
+                            minZ
+                    )
+            );
+
+            toggleEdge(
+                    edges,
+                    new PerimeterEdge(
+                            maxX,
+                            minZ,
+                            maxX,
+                            maxZ
+                    )
+            );
+
+            toggleEdge(
+                    edges,
+                    new PerimeterEdge(
+                            minX,
+                            maxZ,
+                            maxX,
+                            maxZ
+                    )
+            );
+
+            toggleEdge(
+                    edges,
+                    new PerimeterEdge(
+                            minX,
+                            minZ,
+                            minX,
+                            maxZ
+                    )
+            );
+        }
+
+        return new ArrayList<>(
+                new LinkedHashSet<>(edges)
+        );
+    }
+
+    private static void toggleEdge(
+            Set<PerimeterEdge> edges,
+            PerimeterEdge edge
+    ) {
+        PerimeterEdge normalized =
+                edge.normalized();
+
+        if (!edges.remove(normalized)) {
+            edges.add(normalized);
+        }
+    }
+
     private void tick(
             MinecraftServer server
     ) {
@@ -440,6 +769,30 @@ public final class DisplayPreviewV2Manager {
         }
     }
 
+    private record PerimeterEdge(
+            int startX,
+            int startZ,
+            int endX,
+            int endZ
+    ) {
+        private PerimeterEdge normalized() {
+            if (startX < endX
+                    || (
+                    startX == endX
+                            && startZ <= endZ
+            )) {
+                return this;
+            }
+
+            return new PerimeterEdge(
+                    endX,
+                    endZ,
+                    startX,
+                    startZ
+            );
+        }
+    }
+
     private record TestDisplaySession(
             List<Display.BlockDisplay> displays,
             long expiryTick
@@ -449,3 +802,5 @@ public final class DisplayPreviewV2Manager {
         }
     }
 }
+
+
