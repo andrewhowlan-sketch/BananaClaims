@@ -250,6 +250,12 @@ public class Claim {
         return getMember(playerUuid).isPresent();
     }
 
+    public boolean canLeave(UUID playerUuid) {
+        return playerUuid != null
+                && !isOwner(playerUuid)
+                && (isMember(playerUuid) || isSubOwner(playerUuid));
+    }
+
 
     public Set<ClaimSubOwner> getSubOwners() {
         ensureSubOwners();
@@ -433,3 +439,4 @@ public class Claim {
         }
     }
 }
+

@@ -86,6 +86,38 @@ public final class ClaimSuggestions {
                 }
             };
 
+    public static final SuggestionProvider<CommandSourceStack> LEAVABLE_CLAIMS =
+            (context, builder) -> {
+                try {
+                    java.util.UUID playerUuid =
+                            context.getSource()
+                                    .getPlayerOrException()
+                                    .getUUID();
+
+                    List<String> claimNames =
+                            Bananaclaims.CLAIM_MANAGER
+                                    .getAllClaims()
+                                    .stream()
+                                    .filter(claim ->
+                                            claim.canLeave(playerUuid)
+                                    )
+                                    .map(Claim::getName)
+                                    .filter(name ->
+                                            name != null
+                                                    && !name.isBlank()
+                                    )
+                                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                                    .toList();
+
+                    return SharedSuggestionProvider.suggest(
+                            claimNames,
+                            builder
+                    );
+                } catch (Exception exception) {
+                    return builder.buildFuture();
+                }
+            };
+
     public static final SuggestionProvider<CommandSourceStack> ONLINE_PLAYERS =
             (context, builder) -> SharedSuggestionProvider.suggest(
                     context.getSource()
