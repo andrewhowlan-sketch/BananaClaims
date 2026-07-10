@@ -22,6 +22,9 @@ public class InfoClaimCommand {
                                         "claim",
                                         StringArgumentType.word()
                                 )
+                                .suggests(
+                                        ClaimSuggestions.ALL_CLAIMS
+                                )
                                 .executes(context ->
                                         showNamedClaim(
                                                 context.getSource(),

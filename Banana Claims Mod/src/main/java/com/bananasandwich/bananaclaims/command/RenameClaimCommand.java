@@ -20,6 +20,9 @@ public class RenameClaimCommand {
                                         "firstName",
                                         StringArgumentType.word()
                                 )
+                                .suggests(
+                                        ClaimSuggestions.OWNED_CLAIMS
+                                )
                                 .executes(context ->
                                         renameCurrentClaim(
                                                 context.getSource(),
@@ -54,7 +57,8 @@ public class RenameClaimCommand {
             CommandSourceStack source,
             String newName
     ) throws CommandSyntaxException {
-        ServerPlayer player = source.getPlayerOrException();
+        ServerPlayer player =
+                source.getPlayerOrException();
 
         Optional<Claim> optionalClaim =
                 ClaimResolver.findAtPlayer(player);
@@ -93,7 +97,8 @@ public class RenameClaimCommand {
             String claimName,
             String newName
     ) throws CommandSyntaxException {
-        ServerPlayer player = source.getPlayerOrException();
+        ServerPlayer player =
+                source.getPlayerOrException();
 
         Optional<Claim> optionalClaim =
                 ClaimResolver.findOwnedByName(
