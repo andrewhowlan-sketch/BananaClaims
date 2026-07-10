@@ -13,6 +13,7 @@ import net.minecraft.world.entity.Display;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
@@ -44,6 +45,18 @@ public final class DisplayPreviewV2Manager {
 
     private static final double TERRAIN_OFFSET =
             0.18D;
+
+    private static final float CORNER_MARKER_SIZE =
+            1.15F;
+
+    private static final float CORNER_MARKER_HEIGHT =
+            1.15F;
+
+    private static final float CORNER_COLUMN_THICKNESS =
+            0.28F;
+
+    private static final double CORNER_COLUMN_GAP =
+            0.10D;
 
     private final Map<UUID, TestDisplaySession> sessions =
             new HashMap<>();
@@ -142,6 +155,12 @@ public final class DisplayPreviewV2Manager {
                 );
             }
         }
+
+        appendCornerAnchors(
+                level,
+                displays,
+                findTrueCorners(perimeterEdges)
+        );
 
         if (displays.isEmpty()) {
             return false;
@@ -254,6 +273,17 @@ public final class DisplayPreviewV2Manager {
                 minZ,
                 maxZ,
                 maxX
+        );
+
+        appendCornerAnchors(
+                level,
+                displays,
+                Set.of(
+                        new PerimeterPoint(minX, minZ),
+                        new PerimeterPoint(maxX, minZ),
+                        new PerimeterPoint(maxX, maxZ),
+                        new PerimeterPoint(minX, maxZ)
+                )
         );
 
         if (displays.isEmpty()) {
@@ -377,6 +407,17 @@ public final class DisplayPreviewV2Manager {
                 maxX
         );
 
+        appendCornerAnchors(
+                level,
+                displays,
+                Set.of(
+                        new PerimeterPoint(minX, minZ),
+                        new PerimeterPoint(maxX, minZ),
+                        new PerimeterPoint(maxX, maxZ),
+                        new PerimeterPoint(minX, maxZ)
+                )
+        );
+
         if (displays.isEmpty()) {
             return false;
         }
@@ -437,7 +478,7 @@ public final class DisplayPreviewV2Manager {
                             ? maxX
                             : x;
 
-            addBeam(
+            addDisplay(
                     level,
                     displays,
                     runStartX,
@@ -447,7 +488,9 @@ public final class DisplayPreviewV2Manager {
                             - BORDER_THICKNESS / 2.0D,
                     runEndX - runStartX,
                     BORDER_HEIGHT,
-                    BORDER_THICKNESS
+                    BORDER_THICKNESS,
+                    Blocks.AMETHYST_BLOCK
+                            .defaultBlockState()
             );
 
             runStartX = x;
@@ -496,7 +539,7 @@ public final class DisplayPreviewV2Manager {
                             ? maxZ
                             : z;
 
-            addBeam(
+            addDisplay(
                     level,
                     displays,
                     x
@@ -506,7 +549,9 @@ public final class DisplayPreviewV2Manager {
                     runStartZ,
                     BORDER_THICKNESS,
                     BORDER_HEIGHT,
-                    runEndZ - runStartZ
+                    runEndZ - runStartZ,
+                    Blocks.AMETHYST_BLOCK
+                            .defaultBlockState()
             );
 
             runStartZ = z;
@@ -557,7 +602,7 @@ public final class DisplayPreviewV2Manager {
         return minimumY;
     }
 
-    private static void addBeam(
+    private static void addDisplay(
             ServerLevel level,
             List<Display.BlockDisplay> displays,
             double x,
@@ -565,7 +610,8 @@ public final class DisplayPreviewV2Manager {
             double z,
             float scaleX,
             float scaleY,
-            float scaleZ
+            float scaleZ,
+            BlockState blockState
     ) {
         if (scaleX <= 0.0F
                 || scaleY <= 0.0F
@@ -585,10 +631,7 @@ public final class DisplayPreviewV2Manager {
                 z
         );
 
-        display.setBlockState(
-                Blocks.AMETHYST_BLOCK
-                        .defaultBlockState()
-        );
+        display.setBlockState(blockState);
 
         display.setTransformation(
                 new Transformation(
@@ -626,6 +669,108 @@ public final class DisplayPreviewV2Manager {
         }
 
         displays.add(display);
+    }
+
+    private static void appendCornerAnchors(
+            ServerLevel level,
+            List<Display.BlockDisplay> displays,
+            Set<PerimeterPoint> corners
+    ) {
+        for (PerimeterPoint corner : corners) {
+            int surfaceY =
+                    terrainHeight(
+                            level,
+                            corner.x(),
+                            corner.z()
+                    );
+
+            addDisplay(
+                    level,
+                    displays,
+                    corner.x()
+                            - CORNER_MARKER_SIZE / 2.0D,
+                    surfaceY
+                            + TERRAIN_OFFSET,
+                    corner.z()
+                            - CORNER_MARKER_SIZE / 2.0D,
+                    CORNER_MARKER_SIZE,
+                    CORNER_MARKER_HEIGHT,
+                    CORNER_MARKER_SIZE,
+                    Blocks.LAPIS_BLOCK
+                            .defaultBlockState()
+            );
+
+            double columnY =
+                    surfaceY
+                            + TERRAIN_OFFSET
+                            + CORNER_MARKER_HEIGHT
+                            + CORNER_COLUMN_GAP;
+
+            float columnHeight =
+                    (float) Math.max(
+                            1.0D,
+                            level.getMaxY() - columnY
+                    );
+
+            addDisplay(
+                    level,
+                    displays,
+                    corner.x()
+                            - CORNER_COLUMN_THICKNESS / 2.0D,
+                    columnY,
+                    corner.z()
+                            - CORNER_COLUMN_THICKNESS / 2.0D,
+                    CORNER_COLUMN_THICKNESS,
+                    columnHeight,
+                    CORNER_COLUMN_THICKNESS,
+                    Blocks.LAPIS_BLOCK
+                            .defaultBlockState()
+            );
+        }
+    }
+
+    private static Set<PerimeterPoint> findTrueCorners(
+            List<PerimeterEdge> edges
+    ) {
+        Map<PerimeterPoint, Integer> directionMasks =
+                new HashMap<>();
+
+        for (PerimeterEdge edge : edges) {
+            int directionMask =
+                    edge.startZ() == edge.endZ()
+                            ? 1
+                            : 2;
+
+            directionMasks.merge(
+                    new PerimeterPoint(
+                            edge.startX(),
+                            edge.startZ()
+                    ),
+                    directionMask,
+                    (left, right) -> left | right
+            );
+
+            directionMasks.merge(
+                    new PerimeterPoint(
+                            edge.endX(),
+                            edge.endZ()
+                    ),
+                    directionMask,
+                    (left, right) -> left | right
+            );
+        }
+
+        Set<PerimeterPoint> corners =
+                new LinkedHashSet<>();
+
+        for (Map.Entry<PerimeterPoint, Integer> entry
+                : directionMasks.entrySet()) {
+            if (entry.getValue() == 3) {
+                corners.add(entry.getKey());
+            }
+        }
+
+        return corners;
     }
 
     private static List<PerimeterEdge> createClaimPerimeterEdges(
@@ -769,6 +914,12 @@ public final class DisplayPreviewV2Manager {
         }
     }
 
+    private record PerimeterPoint(
+            int x,
+            int z
+    ) {
+    }
+
     private record PerimeterEdge(
             int startX,
             int startZ,
@@ -802,5 +953,6 @@ public final class DisplayPreviewV2Manager {
         }
     }
 }
+
 
 
