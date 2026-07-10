@@ -58,6 +58,12 @@ public final class DisplayPreviewV2Manager {
     private static final double CORNER_COLUMN_GAP =
             0.10D;
 
+    private static final int GUIDE_COLUMN_INTERVAL =
+            16;
+
+    private static final float GUIDE_COLUMN_THICKNESS =
+            0.18F;
+
     private final Map<UUID, TestDisplaySession> sessions =
             new HashMap<>();
 
@@ -156,10 +162,20 @@ public final class DisplayPreviewV2Manager {
             }
         }
 
+        Set<PerimeterPoint> trueCorners =
+                findTrueCorners(perimeterEdges);
+
         appendCornerAnchors(
                 level,
                 displays,
-                findTrueCorners(perimeterEdges)
+                trueCorners
+        );
+
+        appendGuideColumns(
+                level,
+                displays,
+                perimeterEdges,
+                trueCorners
         );
 
         if (displays.isEmpty()) {
@@ -275,15 +291,53 @@ public final class DisplayPreviewV2Manager {
                 maxX
         );
 
-        appendCornerAnchors(
-                level,
-                displays,
+        Set<PerimeterPoint> selectionCorners =
                 Set.of(
                         new PerimeterPoint(minX, minZ),
                         new PerimeterPoint(maxX, minZ),
                         new PerimeterPoint(maxX, maxZ),
                         new PerimeterPoint(minX, maxZ)
-                )
+                );
+
+        List<PerimeterEdge> selectionEdges =
+                List.of(
+                        new PerimeterEdge(
+                                minX,
+                                minZ,
+                                maxX,
+                                minZ
+                        ),
+                        new PerimeterEdge(
+                                maxX,
+                                minZ,
+                                maxX,
+                                maxZ
+                        ),
+                        new PerimeterEdge(
+                                minX,
+                                maxZ,
+                                maxX,
+                                maxZ
+                        ),
+                        new PerimeterEdge(
+                                minX,
+                                minZ,
+                                minX,
+                                maxZ
+                        )
+                );
+
+        appendCornerAnchors(
+                level,
+                displays,
+                selectionCorners
+        );
+
+        appendGuideColumns(
+                level,
+                displays,
+                selectionEdges,
+                selectionCorners
         );
 
         if (displays.isEmpty()) {
@@ -407,15 +461,53 @@ public final class DisplayPreviewV2Manager {
                 maxX
         );
 
-        appendCornerAnchors(
-                level,
-                displays,
+        Set<PerimeterPoint> selectionCorners =
                 Set.of(
                         new PerimeterPoint(minX, minZ),
                         new PerimeterPoint(maxX, minZ),
                         new PerimeterPoint(maxX, maxZ),
                         new PerimeterPoint(minX, maxZ)
-                )
+                );
+
+        List<PerimeterEdge> selectionEdges =
+                List.of(
+                        new PerimeterEdge(
+                                minX,
+                                minZ,
+                                maxX,
+                                minZ
+                        ),
+                        new PerimeterEdge(
+                                maxX,
+                                minZ,
+                                maxX,
+                                maxZ
+                        ),
+                        new PerimeterEdge(
+                                minX,
+                                maxZ,
+                                maxX,
+                                maxZ
+                        ),
+                        new PerimeterEdge(
+                                minX,
+                                minZ,
+                                minX,
+                                maxZ
+                        )
+                );
+
+        appendCornerAnchors(
+                level,
+                displays,
+                selectionCorners
+        );
+
+        appendGuideColumns(
+                level,
+                displays,
+                selectionEdges,
+                selectionCorners
         );
 
         if (displays.isEmpty()) {
@@ -669,6 +761,124 @@ public final class DisplayPreviewV2Manager {
         }
 
         displays.add(display);
+    }
+
+    private static void appendGuideColumns(
+            ServerLevel level,
+            List<Display.BlockDisplay> displays,
+            List<PerimeterEdge> edges,
+            Set<PerimeterPoint> cornerPoints
+    ) {
+        Set<PerimeterPoint> guidePoints =
+                new LinkedHashSet<>();
+
+        for (PerimeterEdge edge : edges) {
+            int deltaX =
+                    Integer.signum(
+                            edge.endX() - edge.startX()
+                    );
+
+            int deltaZ =
+                    Integer.signum(
+                            edge.endZ() - edge.startZ()
+                    );
+
+            int length =
+                    Math.abs(
+                            edge.endX() - edge.startX()
+                    )
+                            + Math.abs(
+                            edge.endZ() - edge.startZ()
+                    );
+
+            for (int offset = GUIDE_COLUMN_INTERVAL;
+                 offset < length;
+                 offset += GUIDE_COLUMN_INTERVAL) {
+                guidePoints.add(
+                        new PerimeterPoint(
+                                edge.startX()
+                                        + deltaX * offset,
+                                edge.startZ()
+                                        + deltaZ * offset
+                        )
+                );
+            }
+        }
+
+        guidePoints.removeAll(cornerPoints);
+
+        for (PerimeterPoint guidePoint : guidePoints) {
+            appendFullHeightGuideColumn(
+                    level,
+                    displays,
+                    guidePoint
+            );
+        }
+    }
+
+    private static void appendFullHeightGuideColumn(
+            ServerLevel level,
+            List<Display.BlockDisplay> displays,
+            PerimeterPoint point
+    ) {
+        int surfaceY =
+                terrainHeight(
+                        level,
+                        point.x(),
+                        point.z()
+                );
+
+        double upperY =
+                surfaceY
+                        + TERRAIN_OFFSET
+                        + BORDER_HEIGHT;
+
+        float upperHeight =
+                (float) Math.max(
+                        1.0D,
+                        level.getMaxY() - upperY
+                );
+
+        addDisplay(
+                level,
+                displays,
+                point.x()
+                        - GUIDE_COLUMN_THICKNESS / 2.0D,
+                upperY,
+                point.z()
+                        - GUIDE_COLUMN_THICKNESS / 2.0D,
+                GUIDE_COLUMN_THICKNESS,
+                upperHeight,
+                GUIDE_COLUMN_THICKNESS,
+                Blocks.AMETHYST_BLOCK
+                        .defaultBlockState()
+        );
+
+        double lowerY =
+                level.getMinY();
+
+        float lowerHeight =
+                (float) Math.max(
+                        1.0D,
+                        surfaceY
+                                + TERRAIN_OFFSET
+                                - lowerY
+                );
+
+        addDisplay(
+                level,
+                displays,
+                point.x()
+                        - GUIDE_COLUMN_THICKNESS / 2.0D,
+                lowerY,
+                point.z()
+                        - GUIDE_COLUMN_THICKNESS / 2.0D,
+                GUIDE_COLUMN_THICKNESS,
+                lowerHeight,
+                GUIDE_COLUMN_THICKNESS,
+                Blocks.AMETHYST_BLOCK
+                        .defaultBlockState()
+        );
     }
 
     private static void appendCornerAnchors(
@@ -979,6 +1189,7 @@ public final class DisplayPreviewV2Manager {
         }
     }
 }
+
 
 
 
