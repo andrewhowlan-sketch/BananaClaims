@@ -3,57 +3,130 @@ package com.bananasandwich.bananaclaims.command;
 import com.bananasandwich.bananaclaims.Bananaclaims;
 import com.bananasandwich.bananaclaims.claim.Claim;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.ChunkPos;
 
 import java.util.Optional;
 
 public class DescriptionClaimCommand {
 
-    public static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> register() {
+    public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return Commands.literal("description")
-                .then(Commands.argument("text", StringArgumentType.greedyString())
-                        .executes(context -> {
-                            ServerPlayer player = context.getSource().getPlayerOrException();
-                            ChunkPos chunkPos = player.chunkPosition();
-                            String dimension = player.level().dimension().toString();
-                            String description = StringArgumentType.getString(context, "text");
-
-                            Optional<Claim> optionalClaim = Bananaclaims.CLAIM_MANAGER.getClaimAt(
-                                    dimension,
-                                    chunkPos.x(),
-                                    chunkPos.z()
-                            );
-
-                            if (optionalClaim.isEmpty()) {
-                                context.getSource().sendFailure(
-                                        Component.literal("There is no claim here.")
-                                );
-                                return 0;
-                            }
-
-                            Claim claim = optionalClaim.get();
-
-                            if (!claim.isOwner(player.getUUID())) {
-                                context.getSource().sendFailure(
-                                        Component.literal("You do not own this claim.")
-                                );
-                                return 0;
-                            }
-
-                            claim.setDescription(description);
-                            Bananaclaims.CLAIM_MANAGER.saveClaims();
-
-                            context.getSource().sendSuccess(
-                                    () -> Component.literal("Claim description updated."),
-                                    false
-                            );
-
-                            return 1;
-                        })
+                .then(Commands.argument(
+                                        "input",
+                                        StringArgumentType.greedyString()
+                                )
+                                .suggests(ClaimSuggestions.OWNED_CLAIMS)
+                                .executes(context -> updateDescription(
+                                        context.getSource(),
+                                        StringArgumentType.getString(
+                                                context,
+                                                "input"
+                                        )
+                                ))
                 );
+    }
+
+    private static int updateDescription(
+            CommandSourceStack source,
+            String input
+    ) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+
+        String trimmedInput = input == null
+                ? ""
+                : input.trim();
+
+        if (trimmedInput.isBlank()) {
+            source.sendFailure(
+                    Component.literal(
+                            "You must provide a description."
+                    )
+            );
+
+            return 0;
+        }
+
+        int firstSpace = trimmedInput.indexOf(' ');
+
+        if (firstSpace > 0) {
+            String possibleClaimName =
+                    trimmedInput.substring(0, firstSpace);
+
+            String possibleDescription =
+                    trimmedInput.substring(firstSpace + 1).trim();
+
+            Optional<Claim> namedClaim =
+                    ClaimResolver.findOwnedByName(
+                            player.getUUID(),
+                            possibleClaimName
+                    );
+
+            if (namedClaim.isPresent()
+                    && !possibleDescription.isBlank()) {
+                return setDescription(
+                        source,
+                        namedClaim.get(),
+                        possibleDescription
+                );
+            }
+        }
+
+        Optional<Claim> currentClaim =
+                ClaimResolver.findAtPlayer(player);
+
+        if (currentClaim.isEmpty()) {
+            source.sendFailure(
+                    Component.literal(
+                            "There is no claim here. "
+                                    + "To update a claim remotely, use "
+                                    + "/claim description <claim> <description>."
+                    )
+            );
+
+            return 0;
+        }
+
+        Claim claim = currentClaim.get();
+
+        if (!claim.isOwner(player.getUUID())) {
+            source.sendFailure(
+                    Component.literal(
+                            "You do not own this claim."
+                    )
+            );
+
+            return 0;
+        }
+
+        return setDescription(
+                source,
+                claim,
+                trimmedInput
+        );
+    }
+
+    private static int setDescription(
+            CommandSourceStack source,
+            Claim claim,
+            String description
+    ) {
+        claim.setDescription(description);
+        Bananaclaims.CLAIM_MANAGER.saveClaims();
+
+        source.sendSuccess(
+                () -> Component.literal(
+                        "Updated the description for claim \""
+                                + claim.getName()
+                                + "\"."
+                ),
+                false
+        );
+
+        return 1;
     }
 }
