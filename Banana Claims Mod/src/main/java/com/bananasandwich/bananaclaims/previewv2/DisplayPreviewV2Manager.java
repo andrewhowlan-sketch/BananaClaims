@@ -700,16 +700,16 @@ public final class DisplayPreviewV2Manager {
                             .defaultBlockState()
             );
 
-            double columnY =
+            double upperColumnY =
                     surfaceY
                             + TERRAIN_OFFSET
                             + CORNER_MARKER_HEIGHT
                             + CORNER_COLUMN_GAP;
 
-            float columnHeight =
+            float upperColumnHeight =
                     (float) Math.max(
                             1.0D,
-                            level.getMaxY() - columnY
+                            level.getMaxY() - upperColumnY
                     );
 
             addDisplay(
@@ -717,11 +717,37 @@ public final class DisplayPreviewV2Manager {
                     displays,
                     corner.x()
                             - CORNER_COLUMN_THICKNESS / 2.0D,
-                    columnY,
+                    upperColumnY,
                     corner.z()
                             - CORNER_COLUMN_THICKNESS / 2.0D,
                     CORNER_COLUMN_THICKNESS,
-                    columnHeight,
+                    upperColumnHeight,
+                    CORNER_COLUMN_THICKNESS,
+                    Blocks.LAPIS_BLOCK
+                            .defaultBlockState()
+            );
+
+            double lowerColumnY =
+                    level.getMinY();
+
+            float lowerColumnHeight =
+                    (float) Math.max(
+                            1.0D,
+                            surfaceY
+                                    + TERRAIN_OFFSET
+                                    - lowerColumnY
+                    );
+
+            addDisplay(
+                    level,
+                    displays,
+                    corner.x()
+                            - CORNER_COLUMN_THICKNESS / 2.0D,
+                    lowerColumnY,
+                    corner.z()
+                            - CORNER_COLUMN_THICKNESS / 2.0D,
+                    CORNER_COLUMN_THICKNESS,
+                    lowerColumnHeight,
                     CORNER_COLUMN_THICKNESS,
                     Blocks.LAPIS_BLOCK
                             .defaultBlockState()
@@ -953,6 +979,7 @@ public final class DisplayPreviewV2Manager {
         }
     }
 }
+
 
 
 
