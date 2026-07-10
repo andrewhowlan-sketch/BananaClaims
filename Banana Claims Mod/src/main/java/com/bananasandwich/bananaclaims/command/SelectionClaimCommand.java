@@ -1,6 +1,9 @@
 package com.bananasandwich.bananaclaims.command;
 
 import com.bananasandwich.bananaclaims.Bananaclaims;
+import com.bananasandwich.bananaclaims.preview.BoundaryPreview;
+import com.bananasandwich.bananaclaims.preview.BoundaryShapeFactory;
+import com.bananasandwich.bananaclaims.selection.ClaimSelection;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
@@ -21,7 +24,9 @@ public class SelectionClaimCommand {
                 .executes(context -> setPos2(context.getSource()));
     }
 
-    private static int setPos1(CommandSourceStack source) throws CommandSyntaxException {
+    private static int setPos1(
+            CommandSourceStack source
+    ) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
         BlockPos position = player.blockPosition();
         String dimension = player.level().dimension().toString();
@@ -42,10 +47,17 @@ public class SelectionClaimCommand {
                 false
         );
 
+        showSelectionPreviewIfReady(
+                source,
+                player
+        );
+
         return 1;
     }
 
-    private static int setPos2(CommandSourceStack source) throws CommandSyntaxException {
+    private static int setPos2(
+            CommandSourceStack source
+    ) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
         BlockPos position = player.blockPosition();
         String dimension = player.level().dimension().toString();
@@ -66,6 +78,60 @@ public class SelectionClaimCommand {
                 false
         );
 
+        showSelectionPreviewIfReady(
+                source,
+                player
+        );
+
         return 1;
+    }
+
+    private static void showSelectionPreviewIfReady(
+            CommandSourceStack source,
+            ServerPlayer player
+    ) {
+        ClaimSelection selection =
+                Bananaclaims.SELECTION_MANAGER.getSelection(
+                        player.getUUID()
+                );
+
+        if (selection == null || !selection.hasBothPositions()) {
+            return;
+        }
+
+        if (!selection.isSameDimension()) {
+            Bananaclaims.BOUNDARY_PREVIEW_MANAGER.stop(
+                    player.getUUID()
+            );
+
+            source.sendFailure(
+                    Component.literal(
+                            "Both claim positions must be in the same dimension to preview the selection."
+                    )
+            );
+
+            return;
+        }
+
+        BoundaryPreview preview =
+                BoundaryShapeFactory.fromSelection(
+                        selection
+                );
+
+        if (preview == null) {
+            return;
+        }
+
+        Bananaclaims.BOUNDARY_PREVIEW_MANAGER.show(
+                player,
+                preview
+        );
+
+        source.sendSuccess(
+                () -> Component.literal(
+                        "Showing the full 3D selection boundary for 20 seconds."
+                ),
+                false
+        );
     }
 }

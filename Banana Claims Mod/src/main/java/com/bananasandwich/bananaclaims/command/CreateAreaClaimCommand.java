@@ -120,6 +120,7 @@ public class CreateAreaClaimCommand {
         }
 
         Bananaclaims.SELECTION_MANAGER.clearSelection(player.getUUID());
+        Bananaclaims.BOUNDARY_PREVIEW_MANAGER.stop(player.getUUID());
 
         source.sendSuccess(
                 () -> Component.literal(
