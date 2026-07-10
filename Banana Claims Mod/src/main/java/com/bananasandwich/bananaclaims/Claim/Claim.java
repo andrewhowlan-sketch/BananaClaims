@@ -1,6 +1,7 @@
 package com.bananasandwich.bananaclaims.claim;
 
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -17,6 +18,8 @@ public class Claim {
     private String description;
 
     private Set<ClaimChunk> chunks = new HashSet<>();
+    private Set<ClaimMember> members = new HashSet<>();
+
     private ClaimFlags flags = new ClaimFlags();
     private ClaimPopupSettings popupSettings = new ClaimPopupSettings();
 
@@ -50,6 +53,7 @@ public class Claim {
                 )
         );
 
+        this.members = new HashSet<>();
         this.flags = new ClaimFlags();
         this.popupSettings = new ClaimPopupSettings();
     }
@@ -81,7 +85,7 @@ public class Claim {
     }
 
     public String getOwnerName() {
-        return ownerName;
+        return ownerName == null ? "" : ownerName;
     }
 
     public String getDimension() {
@@ -159,6 +163,68 @@ public class Claim {
         );
     }
 
+    public Set<ClaimMember> getMembers() {
+        ensureMembers();
+        return Set.copyOf(members);
+    }
+
+    public Optional<ClaimMember> getMember(UUID playerUuid) {
+        if (playerUuid == null) {
+            return Optional.empty();
+        }
+
+        ensureMembers();
+
+        return members.stream()
+                .filter(member ->
+                        playerUuid.equals(member.getUuid())
+                )
+                .findFirst();
+    }
+
+    public boolean addMember(UUID playerUuid, String playerName) {
+        if (playerUuid == null || isOwner(playerUuid)) {
+            return false;
+        }
+
+        ensureMembers();
+
+        Optional<ClaimMember> existingMember =
+                getMember(playerUuid);
+
+        if (existingMember.isPresent()) {
+            existingMember.get().setName(playerName);
+            return false;
+        }
+
+        return members.add(
+                new ClaimMember(
+                        playerUuid,
+                        playerName
+                )
+        );
+    }
+
+    public boolean removeMember(UUID playerUuid) {
+        if (playerUuid == null) {
+            return false;
+        }
+
+        ensureMembers();
+
+        return members.removeIf(member ->
+                playerUuid.equals(member.getUuid())
+        );
+    }
+
+    public boolean isMember(UUID playerUuid) {
+        return getMember(playerUuid).isPresent();
+    }
+
+    public boolean hasAccess(UUID playerUuid) {
+        return isOwner(playerUuid) || isMember(playerUuid);
+    }
+
     public ClaimFlags getFlags() {
         ensureFlags();
         return flags;
@@ -188,6 +254,16 @@ public class Claim {
                     )
             );
         }
+    }
+
+    private void ensureMembers() {
+        if (members == null) {
+            members = new HashSet<>();
+        }
+
+        members.removeIf(member ->
+                member == null || member.getUuid() == null
+        );
     }
 
     private void ensureFlags() {
