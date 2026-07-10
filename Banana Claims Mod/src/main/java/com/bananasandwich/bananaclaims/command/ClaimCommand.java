@@ -32,6 +32,7 @@ public class ClaimCommand {
                         .then(ExpandClaimCommand.register())
                         .then(ShrinkClaimCommand.register())
                         .then(PreviewClaimCommand.register())
+                        .then(PreviewV2Command.register())
                         .then(LeaveClaimCommand.register())
                         .then(InfoClaimCommand.register())
                         .then(DeleteClaimCommand.register())
@@ -46,4 +47,6 @@ public class ClaimCommand {
         );
     }
 }
+
+
 
