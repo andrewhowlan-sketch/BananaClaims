@@ -17,6 +17,7 @@ public class ClaimManager {
 
     private final List<Claim> claims = new ArrayList<>();
     private final Map<ClaimChunkKey, Claim> chunkLookup = new HashMap<>();
+    private final Map<UUID, Claim> claimIdLookup = new HashMap<>();
     private final ClaimEventBus eventBus = new ClaimEventBus();
 
     private ClaimStorage storage;
@@ -35,6 +36,16 @@ public class ClaimManager {
     }
 
     public boolean addClaim(Claim claim) {
+        if (claim == null) {
+            return false;
+        }
+
+        claim.ensureClaimId();
+
+        if (claimIdLookup.containsKey(claim.getClaimId())) {
+            return false;
+        }
+
         for (ClaimChunk chunk : claim.getChunks()) {
             if (isChunkClaimed(
                     chunk.getDimension(),
@@ -46,10 +57,13 @@ public class ClaimManager {
         }
 
         claims.add(claim);
-        rebuildChunkLookup();
+        rebuildLookups();
         save();
 
-        publishChange(ClaimChangeType.CREATED, claim);
+        publishChange(
+                ClaimChangeType.CREATED,
+                claim
+        );
 
         return true;
     }
@@ -57,12 +71,32 @@ public class ClaimManager {
     public void loadClaims(List<Claim> loadedClaims) {
         claims.clear();
 
+        boolean migrated = false;
+
         if (loadedClaims != null) {
-            claims.addAll(loadedClaims);
+            for (Claim claim : loadedClaims) {
+                if (claim == null) {
+                    continue;
+                }
+
+                if (claim.ensureClaimId()) {
+                    migrated = true;
+                }
+
+                claims.add(claim);
+            }
         }
 
-        rebuildChunkLookup();
-        publishChange(ClaimChangeType.LOADED, null);
+        rebuildLookups();
+
+        if (migrated) {
+            save();
+        }
+
+        publishChange(
+                ClaimChangeType.LOADED,
+                null
+        );
     }
 
     public boolean removeClaim(
@@ -71,7 +105,11 @@ public class ClaimManager {
             int chunkZ
     ) {
         Claim claim = chunkLookup.get(
-                new ClaimChunkKey(dimension, chunkX, chunkZ)
+                new ClaimChunkKey(
+                        dimension,
+                        chunkX,
+                        chunkZ
+                )
         );
 
         if (claim == null) {
@@ -81,20 +119,36 @@ public class ClaimManager {
         boolean removed = claims.remove(claim);
 
         if (removed) {
-            rebuildChunkLookup();
+            rebuildLookups();
             save();
 
-            publishChange(ClaimChangeType.DELETED, claim);
+            publishChange(
+                    ClaimChangeType.DELETED,
+                    claim
+            );
         }
 
         return removed;
     }
 
     public void saveClaims() {
-        rebuildChunkLookup();
+        rebuildLookups();
         save();
 
-        publishChange(ClaimChangeType.UPDATED, null);
+        publishChange(
+                ClaimChangeType.UPDATED,
+                null
+        );
+    }
+
+    public Optional<Claim> getClaimById(UUID claimId) {
+        if (claimId == null) {
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(
+                claimIdLookup.get(claimId)
+        );
     }
 
     public Optional<Claim> getClaimAt(
@@ -115,7 +169,10 @@ public class ClaimManager {
 
     public List<Claim> getClaimsForOwner(UUID ownerUuid) {
         return claims.stream()
-                .filter(claim -> claim.getOwnerUuid().equals(ownerUuid))
+                .filter(claim ->
+                        claim.getOwnerUuid() != null
+                                && claim.getOwnerUuid().equals(ownerUuid)
+                )
                 .toList();
     }
 
@@ -141,10 +198,17 @@ public class ClaimManager {
         return revision;
     }
 
-    private void rebuildChunkLookup() {
+    private void rebuildLookups() {
         chunkLookup.clear();
+        claimIdLookup.clear();
 
         for (Claim claim : claims) {
+            claim.ensureClaimId();
+            claimIdLookup.put(
+                    claim.getClaimId(),
+                    claim
+            );
+
             for (ClaimChunk chunk : claim.getChunks()) {
                 ClaimChunkKey key = new ClaimChunkKey(
                         chunk.getDimension(),
@@ -152,7 +216,10 @@ public class ClaimManager {
                         chunk.getChunkZ()
                 );
 
-                chunkLookup.put(key, claim);
+                chunkLookup.put(
+                        key,
+                        claim
+                );
             }
         }
 

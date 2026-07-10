@@ -5,6 +5,9 @@ import java.util.Set;
 import java.util.UUID;
 
 public class Claim {
+
+    private UUID claimId;
+
     private String name;
     private UUID ownerUuid;
     private String ownerName;
@@ -20,7 +23,16 @@ public class Claim {
     public Claim() {
     }
 
-    public Claim(String name, UUID ownerUuid, String ownerName, String dimension, int chunkX, int chunkZ) {
+    public Claim(
+            String name,
+            UUID ownerUuid,
+            String ownerName,
+            String dimension,
+            int chunkX,
+            int chunkZ
+    ) {
+        this.claimId = UUID.randomUUID();
+
         this.name = name;
         this.ownerUuid = ownerUuid;
         this.ownerName = ownerName;
@@ -30,10 +42,30 @@ public class Claim {
         this.description = "";
 
         this.chunks = new HashSet<>();
-        this.chunks.add(new ClaimChunk(dimension, chunkX, chunkZ));
+        this.chunks.add(
+                new ClaimChunk(
+                        dimension,
+                        chunkX,
+                        chunkZ
+                )
+        );
 
         this.flags = new ClaimFlags();
         this.popupSettings = new ClaimPopupSettings();
+    }
+
+    public UUID getClaimId() {
+        ensureClaimId();
+        return claimId;
+    }
+
+    public boolean ensureClaimId() {
+        if (claimId != null) {
+            return false;
+        }
+
+        claimId = UUID.randomUUID();
+        return true;
     }
 
     public String getName() {
@@ -79,19 +111,52 @@ public class Claim {
         return Set.copyOf(chunks);
     }
 
-    public void addChunk(String dimension, int chunkX, int chunkZ) {
+    public void addChunk(
+            String dimension,
+            int chunkX,
+            int chunkZ
+    ) {
         ensureChunks();
-        chunks.add(new ClaimChunk(dimension, chunkX, chunkZ));
+
+        chunks.add(
+                new ClaimChunk(
+                        dimension,
+                        chunkX,
+                        chunkZ
+                )
+        );
     }
 
-    public boolean removeChunk(String dimension, int chunkX, int chunkZ) {
+    public boolean removeChunk(
+            String dimension,
+            int chunkX,
+            int chunkZ
+    ) {
         ensureChunks();
-        return chunks.remove(new ClaimChunk(dimension, chunkX, chunkZ));
+
+        return chunks.remove(
+                new ClaimChunk(
+                        dimension,
+                        chunkX,
+                        chunkZ
+                )
+        );
     }
 
-    public boolean containsChunk(String dimension, int chunkX, int chunkZ) {
+    public boolean containsChunk(
+            String dimension,
+            int chunkX,
+            int chunkZ
+    ) {
         ensureChunks();
-        return chunks.contains(new ClaimChunk(dimension, chunkX, chunkZ));
+
+        return chunks.contains(
+                new ClaimChunk(
+                        dimension,
+                        chunkX,
+                        chunkZ
+                )
+        );
     }
 
     public ClaimFlags getFlags() {
@@ -105,7 +170,8 @@ public class Claim {
     }
 
     public boolean isOwner(UUID playerUuid) {
-        return ownerUuid != null && ownerUuid.equals(playerUuid);
+        return ownerUuid != null
+                && ownerUuid.equals(playerUuid);
     }
 
     private void ensureChunks() {
@@ -114,7 +180,13 @@ public class Claim {
         }
 
         if (chunks.isEmpty() && dimension != null) {
-            chunks.add(new ClaimChunk(dimension, chunkX, chunkZ));
+            chunks.add(
+                    new ClaimChunk(
+                            dimension,
+                            chunkX,
+                            chunkZ
+                    )
+            );
         }
     }
 
