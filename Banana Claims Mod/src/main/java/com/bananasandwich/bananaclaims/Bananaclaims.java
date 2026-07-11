@@ -4,7 +4,6 @@ import com.bananasandwich.bananaclaims.claim.ClaimManager;
 import com.bananasandwich.bananaclaims.command.ClaimCommand;
 import com.bananasandwich.bananaclaims.integration.bluemap.BlueMapIntegration;
 import com.bananasandwich.bananaclaims.notification.ClaimNotificationManager;
-import com.bananasandwich.bananaclaims.preview.BoundaryPreviewManager;
 import com.bananasandwich.bananaclaims.previewv2.DisplayPreviewV2Manager;
 import com.bananasandwich.bananaclaims.previewv2.PreviewV2ConfigManager;
 import com.bananasandwich.bananaclaims.protection.ClaimProtectionManager;
@@ -33,9 +32,6 @@ public class Bananaclaims implements ModInitializer {
 	public static final SelectionManager SELECTION_MANAGER =
 			new SelectionManager();
 
-	public static final BoundaryPreviewManager BOUNDARY_PREVIEW_MANAGER =
-			new BoundaryPreviewManager();
-
 	public static final PreviewV2ConfigManager PREVIEW_V2_CONFIG_MANAGER =
 			new PreviewV2ConfigManager();
 
@@ -60,7 +56,6 @@ public class Bananaclaims implements ModInitializer {
 						ClaimCommand.register(dispatcher)
 		);
 
-		BOUNDARY_PREVIEW_MANAGER.register();
 		DISPLAY_PREVIEW_V2_MANAGER.register();
 		ClaimNotificationManager.register();
 		ClaimProtectionManager.register();

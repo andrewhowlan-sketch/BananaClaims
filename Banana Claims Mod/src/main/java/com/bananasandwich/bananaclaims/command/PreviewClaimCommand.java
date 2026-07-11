@@ -162,18 +162,12 @@ public final class PreviewClaimCommand {
     ) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
 
-        boolean rendererV2Stopped =
+        boolean stopped =
                 Bananaclaims.DISPLAY_PREVIEW_V2_MANAGER.stop(
                         player.getUUID()
                 );
 
-        boolean legacyStopped =
-                Bananaclaims.BOUNDARY_PREVIEW_MANAGER.stop(
-                        player.getUUID()
-                );
-
-        if (!rendererV2Stopped
-                && !legacyStopped) {
+        if (!stopped) {
             source.sendFailure(
                     Component.literal(
                             "You do not have an active claim preview."
@@ -211,10 +205,6 @@ public final class PreviewClaimCommand {
 
             return 0;
         }
-
-        Bananaclaims.BOUNDARY_PREVIEW_MANAGER.stop(
-                player.getUUID()
-        );
 
         boolean shown =
                 Bananaclaims.DISPLAY_PREVIEW_V2_MANAGER

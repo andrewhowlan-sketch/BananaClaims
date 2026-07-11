@@ -99,7 +99,7 @@ public class SelectionClaimCommand {
         }
 
         if (!selection.isSameDimension()) {
-            stopAllPreviewTypes(player);
+            stopPreview(player);
 
             source.sendFailure(
                     Component.literal(
@@ -109,10 +109,6 @@ public class SelectionClaimCommand {
 
             return;
         }
-
-        Bananaclaims.BOUNDARY_PREVIEW_MANAGER.stop(
-                player.getUUID()
-        );
 
         boolean shown =
                 Bananaclaims.DISPLAY_PREVIEW_V2_MANAGER
@@ -145,14 +141,10 @@ public class SelectionClaimCommand {
         );
     }
 
-    private static void stopAllPreviewTypes(
+    private static void stopPreview(
             ServerPlayer player
     ) {
         Bananaclaims.DISPLAY_PREVIEW_V2_MANAGER.stop(
-                player.getUUID()
-        );
-
-        Bananaclaims.BOUNDARY_PREVIEW_MANAGER.stop(
                 player.getUUID()
         );
     }
