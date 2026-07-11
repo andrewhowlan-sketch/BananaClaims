@@ -1,0 +1,13 @@
+{
+  "command.bananaclaims.loaded": "Banana Claims is loaded.",
+  "command.bananaclaims.permission_denied": "You do not have permission to use that Banana Claims command.",
+  "protection.bananaclaims.break_blocks": "You cannot break blocks in this claim.",
+  "protection.bananaclaims.place_blocks": "You cannot place blocks in this claim.",
+  "protection.bananaclaims.block_interaction": "You cannot use that block in this claim.",
+  "protection.bananaclaims.container_interaction": "You cannot open containers in this claim.",
+  "protection.bananaclaims.entity_interaction": "You cannot interact with entities in this claim.",
+  "protection.bananaclaims.entity_placement": "You cannot place entities in this claim.",
+  "protection.bananaclaims.entity_damage": "You cannot damage entities in this claim.",
+  "protection.bananaclaims.pvp": "PvP is disabled in this claim.",
+  "protection.bananaclaims.explosion": "Explosions are disabled in this claim."
+}

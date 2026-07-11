@@ -1,60 +1,39 @@
-BANANA CLAIMS — ADMINISTRATION AND FLAG TAB COMPLETION
+BANANA CLAIMS — 1.0 POLISH: CONFIGURATION AND PERMISSIONS
 
-Install
-=======
-Extract the contents of this folder into the Banana Claims project root and
-allow Windows to replace existing files.
+INSTALLATION
+1. Copy the contents of this package into the Banana Claims project root.
+2. Allow Windows to replace the listed existing source files.
+3. Run VERIFY_PERMISSIONS_UPDATE.ps1 from the project root.
+4. Build with: .\gradlew.bat build
+5. Replace the server JAR and start the server.
 
-Administrative Commands
-=======================
-/claim admin
-/claim admin list [page]
-/claim admin info [claim]
-/claim admin nearest
-/claim admin force-transfer <claim> <player>
-/claim admin force-delete <claim> confirm
-/claim admin reload
-/claim admin reload claims
-/claim admin reload preview
-/claim admin diagnostics [claim]
+MAIN CONFIG
+The mod creates:
+  config/bananaclaims.json
 
-Admin Claim Selectors
-=====================
-A globally unique claim name can be entered normally.
+It controls:
+- Optional Fabric Permissions API integration
+- Vanilla fallback command levels for public, management, and admin nodes
+- Exact-node fallback overrides
+- Protection denial-message enable/disable
+- Protection denial-message cooldown
 
-When multiple owners use the same claim name, tab completion returns:
+RELOAD
+  /claim admin reload config
 
-    claimName@ownerName
+PERMISSION DESIGN
+- No hard dependency on Fabric Permissions API or LuckPerms was added.
+- When the API is available and enabled, Banana Claims uses its permission checks.
+- Otherwise, configured vanilla command-level fallbacks are used.
+- Default fallback levels preserve existing behavior:
+  public = 0
+  management = 0
+  admin = 3
 
-A full claim UUID is also accepted.
+See PERMISSIONS.md for the complete canonical node list.
 
-Permissions
-===========
-The /claim admin branch requires Minecraft's administrator command permission
-level. Unauthorized players do not receive the admin branch in tab completion.
-Granular Banana Claims permission nodes remain part of the later 1.0
-permissions milestone.
+LOCALIZATION FOUNDATION
+The first language file is included at:
+  src/main/resources/assets/bananaclaims/lang/en_us.json
 
-Flag Completion
-===============
-/claim flag <claim> now tab-completes:
-
-- Managed claim names
-- Canonical flag names
-- true / false
-
-Common historical aliases such as blockbreak, blockplace, container, entity,
-and explosion remain accepted, but completion uses canonical names.
-
-Safety
-======
-- Force delete requires the final literal: confirm
-- Administrative transfer preserves owner/member/subowner invariants
-- Administrative transfer refuses same-name ownership collisions
-- Reloading malformed claim data keeps the current in-memory claims active
-- Every destructive administrative action is written to the server log
-- Owners are notified when online after a forced transfer or deletion
-
-Build
-=====
-.\gradlew.bat build
+This batch localizes permission-denied and protection-denial messages and creates the foundation for the full localization pass.

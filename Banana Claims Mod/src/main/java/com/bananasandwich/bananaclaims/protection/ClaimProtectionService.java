@@ -2,6 +2,8 @@ package com.bananasandwich.bananaclaims.protection;
 
 import com.bananasandwich.bananaclaims.claim.Claim;
 import com.bananasandwich.bananaclaims.claim.ClaimManager;
+import com.bananasandwich.bananaclaims.permission.ClaimPermission;
+import com.bananasandwich.bananaclaims.permission.ClaimPermissionService;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -30,14 +32,21 @@ public final class ClaimProtectionService {
     private static final int MAX_OWNER_RESOLUTION_DEPTH = 8;
 
     private final ClaimManager claimManager;
+    private final ClaimPermissionService permissionService;
 
     public ClaimProtectionService(
-            ClaimManager claimManager
+            ClaimManager claimManager,
+            ClaimPermissionService permissionService
     ) {
         this.claimManager =
                 Objects.requireNonNull(
                         claimManager,
                         "claimManager"
+                );
+        this.permissionService =
+                Objects.requireNonNull(
+                        permissionService,
+                        "permissionService"
                 );
     }
 
@@ -71,12 +80,27 @@ public final class ClaimProtectionService {
                         ? null
                         : responsiblePlayer.getUUID();
 
-        return findBlockingClaim(
-                level,
-                position,
-                responsibleUuid,
-                action
-        );
+        Optional<Claim> blockingClaim =
+                findBlockingClaim(
+                        level,
+                        position,
+                        responsibleUuid,
+                        action
+                );
+
+        if (blockingClaim.isEmpty()
+                || responsiblePlayer == null) {
+            return blockingClaim;
+        }
+
+        if (permissionService.has(
+                responsiblePlayer,
+                ClaimPermission.PROTECTION_BYPASS
+        )) {
+            return Optional.empty();
+        }
+
+        return blockingClaim;
     }
 
     public Optional<Claim> findBlockingClaim(

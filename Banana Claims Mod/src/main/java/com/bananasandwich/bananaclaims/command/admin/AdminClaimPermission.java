@@ -1,14 +1,17 @@
 package com.bananasandwich.bananaclaims.command.admin;
 
+import com.bananasandwich.bananaclaims.Bananaclaims;
+import com.bananasandwich.bananaclaims.permission.ClaimPermission;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.server.permissions.Permissions;
+import net.minecraft.network.chat.Component;
+
+import java.util.function.IntSupplier;
 
 /**
  * Central permission gate for Banana Claims administration commands.
  *
- * <p>This currently uses Minecraft's administrator command level so it works
- * without adding a new hard dependency. The class provides one integration
- * point for granular permission nodes during the 1.0 permissions milestone.</p>
+ * <p>The broad admin node grants every administrative command. Individual
+ * subcommand nodes can also be granted without granting the broad node.</p>
  */
 public final class AdminClaimPermission {
 
@@ -18,10 +21,75 @@ public final class AdminClaimPermission {
     public static boolean canUse(
             CommandSourceStack source
     ) {
-        return source != null
-                && source.permissions()
-                .hasPermission(
-                        Permissions.COMMANDS_ADMIN
-                );
+        for (ClaimPermission permission
+                : ClaimPermission.adminPermissions()) {
+            if (Bananaclaims.PERMISSION_SERVICE.has(
+                    source,
+                    permission
+            )) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static boolean canUse(
+            CommandSourceStack source,
+            ClaimPermission permission
+    ) {
+        return Bananaclaims.PERMISSION_SERVICE.has(
+                source,
+                ClaimPermission.ADMIN_ROOT
+        ) || Bananaclaims.PERMISSION_SERVICE.has(
+                source,
+                permission
+        );
+    }
+
+    public static boolean canUseAny(
+            CommandSourceStack source,
+            ClaimPermission... permissions
+    ) {
+        if (Bananaclaims.PERMISSION_SERVICE.has(
+                source,
+                ClaimPermission.ADMIN_ROOT
+        )) {
+            return true;
+        }
+
+        if (permissions == null) {
+            return false;
+        }
+
+        for (ClaimPermission permission : permissions) {
+            if (Bananaclaims.PERMISSION_SERVICE.has(
+                    source,
+                    permission
+            )) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static int runIfAllowed(
+            CommandSourceStack source,
+            ClaimPermission permission,
+            IntSupplier action
+    ) {
+        if (!canUse(source, permission)) {
+            source.sendFailure(
+                    Component.translatableWithFallback(
+                            "command.bananaclaims.permission_denied",
+                            "You do not have permission to use that Banana Claims command."
+                    )
+            );
+
+            return 0;
+        }
+
+        return action.getAsInt();
     }
 }

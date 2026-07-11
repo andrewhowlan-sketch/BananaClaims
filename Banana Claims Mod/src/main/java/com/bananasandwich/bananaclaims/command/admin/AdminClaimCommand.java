@@ -6,6 +6,7 @@ import com.bananasandwich.bananaclaims.claim.ClaimFlagDefinition;
 import com.bananasandwich.bananaclaims.claim.ClaimMember;
 import com.bananasandwich.bananaclaims.claim.ClaimMutationResult;
 import com.bananasandwich.bananaclaims.claim.ClaimSubOwner;
+import com.bananasandwich.bananaclaims.permission.ClaimPermission;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -36,9 +37,21 @@ public final class AdminClaimCommand {
         return Commands.literal("admin")
                 .requires(AdminClaimPermission::canUse)
                 .executes(context ->
-                        showSummary(context.getSource())
+                        AdminClaimPermission.runIfAllowed(
+                                context.getSource(),
+                                ClaimPermission.ADMIN_ROOT,
+                                () -> showSummary(
+                                        context.getSource()
+                                )
+                        )
                 )
                 .then(Commands.literal("list")
+                        .requires(source ->
+                                AdminClaimPermission.canUse(
+                                        source,
+                                        ClaimPermission.ADMIN_LIST
+                                )
+                        )
                         .executes(context ->
                                 listClaims(
                                         context.getSource(),
@@ -61,6 +74,12 @@ public final class AdminClaimCommand {
                         )
                 )
                 .then(Commands.literal("info")
+                        .requires(source ->
+                                AdminClaimPermission.canUse(
+                                        source,
+                                        ClaimPermission.ADMIN_INFO
+                                )
+                        )
                         .executes(context ->
                                 showCurrentClaim(
                                         context.getSource()
@@ -88,6 +107,12 @@ public final class AdminClaimCommand {
                         )
                 )
                 .then(Commands.literal("nearest")
+                        .requires(source ->
+                                AdminClaimPermission.canUse(
+                                        source,
+                                        ClaimPermission.ADMIN_NEAREST
+                                )
+                        )
                         .executes(context ->
                                 showCurrentClaim(
                                         context.getSource()
@@ -95,6 +120,12 @@ public final class AdminClaimCommand {
                         )
                 )
                 .then(Commands.literal("force-transfer")
+                        .requires(source ->
+                                AdminClaimPermission.canUse(
+                                        source,
+                                        ClaimPermission.ADMIN_FORCE_TRANSFER
+                                )
+                        )
                         .then(Commands.argument(
                                                 "claim",
                                                 StringArgumentType.word()
@@ -143,6 +174,12 @@ public final class AdminClaimCommand {
                         )
                 )
                 .then(Commands.literal("force-delete")
+                        .requires(source ->
+                                AdminClaimPermission.canUse(
+                                        source,
+                                        ClaimPermission.ADMIN_FORCE_DELETE
+                                )
+                        )
                         .then(Commands.argument(
                                                 "claim",
                                                 StringArgumentType.word()
@@ -167,10 +204,44 @@ public final class AdminClaimCommand {
                         )
                 )
                 .then(Commands.literal("reload")
+                        .requires(source ->
+                                AdminClaimPermission.canUseAny(
+                                        source,
+                                        ClaimPermission.ADMIN_RELOAD_ALL,
+                                        ClaimPermission.ADMIN_RELOAD_CONFIG,
+                                        ClaimPermission.ADMIN_RELOAD_CLAIMS,
+                                        ClaimPermission.ADMIN_RELOAD_PREVIEW
+                                )
+                        )
                         .executes(context ->
-                                reloadAll(context.getSource())
+                                AdminClaimPermission.runIfAllowed(
+                                        context.getSource(),
+                                        ClaimPermission.ADMIN_RELOAD_ALL,
+                                        () -> reloadAll(
+                                                context.getSource()
+                                        )
+                                )
+                        )
+                        .then(Commands.literal("config")
+                                .requires(source ->
+                                        AdminClaimPermission.canUse(
+                                                source,
+                                                ClaimPermission.ADMIN_RELOAD_CONFIG
+                                        )
+                                )
+                                .executes(context ->
+                                        reloadConfig(
+                                                context.getSource()
+                                        )
+                                )
                         )
                         .then(Commands.literal("claims")
+                                .requires(source ->
+                                        AdminClaimPermission.canUse(
+                                                source,
+                                                ClaimPermission.ADMIN_RELOAD_CLAIMS
+                                        )
+                                )
                                 .executes(context ->
                                         reloadClaims(
                                                 context.getSource()
@@ -178,6 +249,12 @@ public final class AdminClaimCommand {
                                 )
                         )
                         .then(Commands.literal("preview")
+                                .requires(source ->
+                                        AdminClaimPermission.canUse(
+                                                source,
+                                                ClaimPermission.ADMIN_RELOAD_PREVIEW
+                                        )
+                                )
                                 .executes(context ->
                                         reloadPreview(
                                                 context.getSource()
@@ -186,6 +263,12 @@ public final class AdminClaimCommand {
                         )
                 )
                 .then(Commands.literal("diagnostics")
+                        .requires(source ->
+                                AdminClaimPermission.canUse(
+                                        source,
+                                        ClaimPermission.ADMIN_DIAGNOSTICS
+                                )
+                        )
                         .executes(context ->
                                 showGlobalDiagnostics(
                                         context.getSource()
@@ -563,11 +646,15 @@ public final class AdminClaimCommand {
     private static int reloadAll(
             CommandSourceStack source
     ) {
+        boolean configResult =
+                Bananaclaims.CONFIG_MANAGER.reload();
         int claimsResult = reloadClaimsInternal(source);
         boolean previewResult =
                 Bananaclaims.PREVIEW_V2_CONFIG_MANAGER.reload();
 
-        if (claimsResult < 0 || !previewResult) {
+        if (!configResult
+                || claimsResult < 0
+                || !previewResult) {
             source.sendFailure(
                     Component.literal(
                             "Banana Claims reload completed with errors. Check the server log."
@@ -579,12 +666,43 @@ public final class AdminClaimCommand {
 
         audit(
                 source,
-                "reloaded claims and preview configuration"
+                "reloaded main configuration, claims, and preview configuration"
         );
 
         source.sendSuccess(
                 () -> Component.literal(
-                        "Reloaded claims and preview configuration successfully."
+                        "Reloaded Banana Claims configuration, claim data, and preview configuration successfully."
+                ),
+                true
+        );
+
+        return 1;
+    }
+
+    private static int reloadConfig(
+            CommandSourceStack source
+    ) {
+        if (!Bananaclaims.CONFIG_MANAGER.reload()) {
+            source.sendFailure(
+                    Component.literal(
+                            "Unable to reload the Banana Claims configuration. The previous settings remain active."
+                    )
+            );
+
+            return 0;
+        }
+
+        audit(
+                source,
+                "reloaded the main Banana Claims configuration"
+        );
+
+        source.sendSuccess(
+                () -> Component.literal(
+                        "Reloaded Banana Claims configuration from "
+                                + Bananaclaims.CONFIG_MANAGER
+                                .getConfigPath()
+                                + ". New permission and protection-message settings are active immediately."
                 ),
                 true
         );
@@ -713,8 +831,17 @@ public final class AdminClaimCommand {
                 .append(Bananaclaims.CLAIM_MANAGER.getRevision())
                 .append("\nClaims file: ")
                 .append(Bananaclaims.CLAIM_STORAGE.getClaimsFile())
+                .append("\nMain config: ")
+                .append(Bananaclaims.CONFIG_MANAGER.getConfigPath())
                 .append("\nPreview config: ")
                 .append(Bananaclaims.PREVIEW_V2_CONFIG_MANAGER.getConfigPath())
+                .append("\nPermissions API: ")
+                .append(
+                        Bananaclaims.PERMISSION_SERVICE
+                                .isFabricPermissionsApiAvailable()
+                                ? "Detected"
+                                : "Vanilla fallback"
+                )
                 .append("\nDimensions: ")
                 .append(formatDimensions(report.chunksByDimension()));
 

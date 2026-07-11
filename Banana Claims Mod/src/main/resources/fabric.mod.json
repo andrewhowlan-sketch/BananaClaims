@@ -1,38 +1,38 @@
 {
-	"schemaVersion": 1,
-	"id": "bananaclaims",
-	"version": "${version}",
-	"name": "bananaclaims",
-	"description": "This is an example description! Tell everyone what your mod is about!",
-	"authors": [
-		"Me!"
-	],
-	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
-	},
-	"license": "CC0-1.0",
-	"icon": "assets/bananaclaims/icon.png",
-	"environment": "*",
-	"entrypoints": {
-		"main": [
-			"com.bananasandwich.bananaclaims.Bananaclaims"
-		],
-		"client": [
-			"com.bananasandwich.bananaclaims.client.BananaclaimsClient"
-		]
-	},
-	"mixins": [
-		"bananaclaims.mixins.json",
-		{
-			"config": "bananaclaims.client.mixins.json",
-			"environment": "client"
-		}
-	],
-	"depends": {
-		"fabricloader": ">=0.19.3",
-		"minecraft": "~26.2",
-		"java": ">=25",
-		"fabric-api": "*"
-	}
+  "schemaVersion": 1,
+  "id": "bananaclaims",
+  "version": "${version}",
+  "name": "Banana Claims",
+  "description": "A polished server-side claim, settlement, protection, and visualization system for Fabric servers.",
+  "authors": [
+    "Banana Sandwich SMP"
+  ],
+  "license": "CC0-1.0",
+  "icon": "assets/bananaclaims/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.bananasandwich.bananaclaims.Bananaclaims"
+    ],
+    "client": [
+      "com.bananasandwich.bananaclaims.client.BananaclaimsClient"
+    ]
+  },
+  "mixins": [
+    "bananaclaims.mixins.json",
+    {
+      "config": "bananaclaims.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "fabric-permissions-api-v0": "*",
+    "luckperms": "*"
+  }
 }

@@ -1,0 +1,14 @@
+{
+  "configVersion": 1,
+  "permissions": {
+    "fabricPermissionsApiEnabled": true,
+    "publicFallbackLevel": 0,
+    "managementFallbackLevel": 0,
+    "adminFallbackLevel": 3,
+    "fallbackLevelOverrides": {}
+  },
+  "protection": {
+    "denialMessagesEnabled": true,
+    "denialMessageCooldownTicks": 20
+  }
+}

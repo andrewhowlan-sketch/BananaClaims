@@ -1,12 +1,26 @@
-REPLACE
-src/main/java/com/bananasandwich/bananaclaims/Claim/ClaimManager.java
-src/main/java/com/bananasandwich/bananaclaims/command/ClaimCommand.java
-src/main/java/com/bananasandwich/bananaclaims/command/FlagClaimCommand.java
-src/main/java/com/bananasandwich/bananaclaims/storage/ClaimStorage.java
+BANANA CLAIMS — CONFIGURATION AND PERMISSIONS
 
-ADD
-src/main/java/com/bananasandwich/bananaclaims/Claim/ClaimFlagDefinition.java
+REPLACE
+src/main/java/com/bananasandwich/bananaclaims/Bananaclaims.java
+src/main/java/com/bananasandwich/bananaclaims/command/ClaimCommand.java
 src/main/java/com/bananasandwich/bananaclaims/command/admin/AdminClaimCommand.java
 src/main/java/com/bananasandwich/bananaclaims/command/admin/AdminClaimPermission.java
-src/main/java/com/bananasandwich/bananaclaims/command/admin/AdminClaimSelector.java
-src/main/java/com/bananasandwich/bananaclaims/command/admin/ClaimDiagnostics.java
+src/main/java/com/bananasandwich/bananaclaims/protection/ClaimProtectionManager.java
+src/main/java/com/bananasandwich/bananaclaims/protection/ClaimProtectionService.java
+src/main/java/com/bananasandwich/bananaclaims/protection/ProtectionAction.java
+src/main/resources/fabric.mod.json
+
+ADD
+src/main/java/com/bananasandwich/bananaclaims/config/BananaClaimsConfig.java
+src/main/java/com/bananasandwich/bananaclaims/config/BananaClaimsConfigManager.java
+src/main/java/com/bananasandwich/bananaclaims/permission/ClaimPermission.java
+src/main/java/com/bananasandwich/bananaclaims/permission/ClaimPermissionService.java
+src/main/java/com/bananasandwich/bananaclaims/permission/FabricPermissionsBridge.java
+src/main/resources/assets/bananaclaims/lang/en_us.json
+PERMISSIONS.md
+
+REFERENCE / AUTO-GENERATED AT RUNTIME
+config/bananaclaims.json
+
+The mod automatically creates config/bananaclaims.json if it does not exist.
+Do not overwrite a customized live server config unless you intend to reset it to the supplied defaults.

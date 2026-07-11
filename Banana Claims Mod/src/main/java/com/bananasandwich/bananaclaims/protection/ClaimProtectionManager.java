@@ -1,6 +1,7 @@
 package com.bananasandwich.bananaclaims.protection;
 
 import com.bananasandwich.bananaclaims.claim.Claim;
+import com.bananasandwich.bananaclaims.config.BananaClaimsConfigManager;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.BlockEvents;
@@ -8,7 +9,6 @@ import net.fabricmc.fabric.api.event.player.ItemEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -55,9 +55,8 @@ import java.util.UUID;
  */
 public final class ClaimProtectionManager {
 
-    private static final long DENIAL_MESSAGE_COOLDOWN_TICKS = 20L;
-
     private final ClaimProtectionService protectionService;
+    private final BananaClaimsConfigManager configManager;
 
     private final Map<DenialKey, Long> lastDenialMessages =
             new HashMap<>();
@@ -65,12 +64,18 @@ public final class ClaimProtectionManager {
     private boolean registered;
 
     public ClaimProtectionManager(
-            ClaimProtectionService protectionService
+            ClaimProtectionService protectionService,
+            BananaClaimsConfigManager configManager
     ) {
         this.protectionService =
                 Objects.requireNonNull(
                         protectionService,
                         "protectionService"
+                );
+        this.configManager =
+                Objects.requireNonNull(
+                        configManager,
+                        "configManager"
                 );
     }
 
@@ -498,8 +503,17 @@ public final class ClaimProtectionManager {
             return;
         }
 
+        if (!configManager
+                .areProtectionDenialMessagesEnabled()) {
+            return;
+        }
+
         long currentTick =
                 server.getTickCount();
+
+        int cooldownTicks =
+                configManager
+                        .getProtectionDenialCooldownTicks();
 
         DenialKey denialKey =
                 new DenialKey(
@@ -510,9 +524,10 @@ public final class ClaimProtectionManager {
         Long previousTick =
                 lastDenialMessages.get(denialKey);
 
-        if (previousTick != null
+        if (cooldownTicks > 0
+                && previousTick != null
                 && currentTick - previousTick
-                < DENIAL_MESSAGE_COOLDOWN_TICKS) {
+                < cooldownTicks) {
             return;
         }
 
@@ -522,9 +537,7 @@ public final class ClaimProtectionManager {
         );
 
         player.sendSystemMessage(
-                Component.literal(
-                        action.getDenialMessage()
-                )
+                action.getDenialComponent()
         );
     }
 

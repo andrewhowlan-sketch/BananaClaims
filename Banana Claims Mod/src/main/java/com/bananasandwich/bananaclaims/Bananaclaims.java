@@ -2,8 +2,10 @@ package com.bananasandwich.bananaclaims;
 
 import com.bananasandwich.bananaclaims.claim.ClaimManager;
 import com.bananasandwich.bananaclaims.command.ClaimCommand;
+import com.bananasandwich.bananaclaims.config.BananaClaimsConfigManager;
 import com.bananasandwich.bananaclaims.integration.bluemap.BlueMapIntegration;
 import com.bananasandwich.bananaclaims.notification.ClaimNotificationManager;
+import com.bananasandwich.bananaclaims.permission.ClaimPermissionService;
 import com.bananasandwich.bananaclaims.previewv2.DisplayPreviewV2Manager;
 import com.bananasandwich.bananaclaims.previewv2.PreviewV2ConfigManager;
 import com.bananasandwich.bananaclaims.protection.ClaimProtectionManager;
@@ -18,69 +20,78 @@ import org.slf4j.LoggerFactory;
 
 public class Bananaclaims implements ModInitializer {
 
-	public static final String MOD_ID =
-			"bananaclaims";
+    public static final String MOD_ID =
+            "bananaclaims";
 
-	public static final Logger LOGGER =
-			LoggerFactory.getLogger(MOD_ID);
+    public static final Logger LOGGER =
+            LoggerFactory.getLogger(MOD_ID);
 
-	public static final ClaimManager CLAIM_MANAGER =
-			new ClaimManager();
+    public static final BananaClaimsConfigManager CONFIG_MANAGER =
+            new BananaClaimsConfigManager();
 
-	public static final ClaimStorage CLAIM_STORAGE =
-			new ClaimStorage();
+    public static final ClaimPermissionService PERMISSION_SERVICE =
+            new ClaimPermissionService(
+                    CONFIG_MANAGER
+            );
 
-	public static final SelectionManager SELECTION_MANAGER =
-			new SelectionManager();
+    public static final ClaimManager CLAIM_MANAGER =
+            new ClaimManager();
 
-	public static final PreviewV2ConfigManager PREVIEW_V2_CONFIG_MANAGER =
-			new PreviewV2ConfigManager();
+    public static final ClaimStorage CLAIM_STORAGE =
+            new ClaimStorage();
 
-	public static final DisplayPreviewV2Manager DISPLAY_PREVIEW_V2_MANAGER =
-			new DisplayPreviewV2Manager(
-					PREVIEW_V2_CONFIG_MANAGER
-			);
+    public static final SelectionManager SELECTION_MANAGER =
+            new SelectionManager();
 
-	public static final ClaimProtectionService CLAIM_PROTECTION_SERVICE =
-			new ClaimProtectionService(
-					CLAIM_MANAGER
-			);
+    public static final PreviewV2ConfigManager PREVIEW_V2_CONFIG_MANAGER =
+            new PreviewV2ConfigManager();
 
-	public static final ClaimProtectionManager CLAIM_PROTECTION_MANAGER =
-			new ClaimProtectionManager(
-					CLAIM_PROTECTION_SERVICE
-			);
+    public static final DisplayPreviewV2Manager DISPLAY_PREVIEW_V2_MANAGER =
+            new DisplayPreviewV2Manager(
+                    PREVIEW_V2_CONFIG_MANAGER
+            );
 
-	@Override
-	public void onInitialize() {
-		LOGGER.info("Banana Claims loaded!");
+    public static final ClaimProtectionService CLAIM_PROTECTION_SERVICE =
+            new ClaimProtectionService(
+                    CLAIM_MANAGER,
+                    PERMISSION_SERVICE
+            );
 
-		PREVIEW_V2_CONFIG_MANAGER.load();
+    public static final ClaimProtectionManager CLAIM_PROTECTION_MANAGER =
+            new ClaimProtectionManager(
+                    CLAIM_PROTECTION_SERVICE,
+                    CONFIG_MANAGER
+            );
 
-		CLAIM_MANAGER.setStorage(CLAIM_STORAGE);
-		CLAIM_MANAGER.loadClaims(
-				CLAIM_STORAGE.loadClaims()
-		);
+    @Override
+    public void onInitialize() {
+        LOGGER.info("Banana Claims loaded!");
 
-		CommandRegistrationCallback.EVENT.register(
-				(dispatcher, registryAccess, environment) ->
-						ClaimCommand.register(dispatcher)
-		);
+        CONFIG_MANAGER.load();
+        PREVIEW_V2_CONFIG_MANAGER.load();
 
-		DISPLAY_PREVIEW_V2_MANAGER.register();
-		ClaimNotificationManager.register();
-		CLAIM_PROTECTION_MANAGER.register();
-		BlueMapIntegration.register();
-	}
+        CLAIM_MANAGER.setStorage(CLAIM_STORAGE);
+        CLAIM_MANAGER.loadClaims(
+                CLAIM_STORAGE.loadClaims()
+        );
 
-	public static Identifier id(
-			String path
-	) {
-		return Identifier.fromNamespaceAndPath(
-				MOD_ID,
-				path
-		);
-	}
+        CommandRegistrationCallback.EVENT.register(
+                (dispatcher, registryAccess, environment) ->
+                        ClaimCommand.register(dispatcher)
+        );
+
+        DISPLAY_PREVIEW_V2_MANAGER.register();
+        ClaimNotificationManager.register();
+        CLAIM_PROTECTION_MANAGER.register();
+        BlueMapIntegration.register();
+    }
+
+    public static Identifier id(
+            String path
+    ) {
+        return Identifier.fromNamespaceAndPath(
+                MOD_ID,
+                path
+        );
+    }
 }
-
-
