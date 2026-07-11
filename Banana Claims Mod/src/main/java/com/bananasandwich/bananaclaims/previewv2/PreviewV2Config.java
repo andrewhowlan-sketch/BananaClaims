@@ -11,6 +11,8 @@ import java.util.Locale;
  */
 public final class PreviewV2Config {
 
+    public static final int CURRENT_CONFIG_VERSION = 2;
+
     public static final String DEFAULT_GLOW_COLOR =
             "#A855F7";
 
@@ -23,6 +25,7 @@ public final class PreviewV2Config {
     public static final String DEFAULT_GUIDE_MATERIAL =
             "minecraft:amethyst_block";
 
+    private int configVersion;
     private int durationTicks = 10 * 20;
     private float viewRange = 4.0F;
     private boolean glowEnabled = true;
@@ -56,6 +59,7 @@ public final class PreviewV2Config {
         PreviewV2Config copy =
                 new PreviewV2Config();
 
+        copy.configVersion = configVersion;
         copy.durationTicks = durationTicks;
         copy.viewRange = viewRange;
         copy.glowEnabled = glowEnabled;
@@ -96,6 +100,11 @@ public final class PreviewV2Config {
      */
     boolean sanitize() {
         boolean changed = false;
+
+        if (configVersion != CURRENT_CONFIG_VERSION) {
+            configVersion = CURRENT_CONFIG_VERSION;
+            changed = true;
+        }
 
         int sanitizedDuration =
                 clamp(durationTicks, 1, 20 * 60 * 30);
@@ -180,6 +189,10 @@ public final class PreviewV2Config {
         changed |= animations.sanitize();
 
         return changed;
+    }
+
+    public int getConfigVersion() {
+        return configVersion;
     }
 
     public int getDurationTicks() {
@@ -306,6 +319,7 @@ public final class PreviewV2Config {
         private String material =
                 DEFAULT_BORDER_MATERIAL;
 
+        private boolean glowEnabled = true;
         private float thickness = 0.35F;
         private float height = 0.35F;
         private double terrainOffset = 0.18D;
@@ -315,6 +329,7 @@ public final class PreviewV2Config {
                     new BorderSettings();
 
             copy.material = material;
+            copy.glowEnabled = glowEnabled;
             copy.thickness = thickness;
             copy.height = height;
             copy.terrainOffset = terrainOffset;
@@ -370,6 +385,14 @@ public final class PreviewV2Config {
             this.material = material;
         }
 
+        public boolean isGlowEnabled() {
+            return glowEnabled;
+        }
+
+        public void setGlowEnabled(boolean glowEnabled) {
+            this.glowEnabled = glowEnabled;
+        }
+
         public float getThickness() {
             return thickness;
         }
@@ -402,7 +425,9 @@ public final class PreviewV2Config {
 
         private float size = 1.15F;
         private float height = 1.15F;
+        private boolean anchorGlowEnabled = true;
         private boolean columnsEnabled = true;
+        private boolean columnGlowEnabled = false;
         private float columnThickness = 0.28F;
         private double columnGap = 0.10D;
 
@@ -413,7 +438,9 @@ public final class PreviewV2Config {
             copy.material = material;
             copy.size = size;
             copy.height = height;
+            copy.anchorGlowEnabled = anchorGlowEnabled;
             copy.columnsEnabled = columnsEnabled;
+            copy.columnGlowEnabled = columnGlowEnabled;
             copy.columnThickness = columnThickness;
             copy.columnGap = columnGap;
 
@@ -494,12 +521,28 @@ public final class PreviewV2Config {
             this.height = height;
         }
 
+        public boolean isAnchorGlowEnabled() {
+            return anchorGlowEnabled;
+        }
+
+        public void setAnchorGlowEnabled(boolean anchorGlowEnabled) {
+            this.anchorGlowEnabled = anchorGlowEnabled;
+        }
+
         public boolean isColumnsEnabled() {
             return columnsEnabled;
         }
 
         public void setColumnsEnabled(boolean columnsEnabled) {
             this.columnsEnabled = columnsEnabled;
+        }
+
+        public boolean isColumnGlowEnabled() {
+            return columnGlowEnabled;
+        }
+
+        public void setColumnGlowEnabled(boolean columnGlowEnabled) {
+            this.columnGlowEnabled = columnGlowEnabled;
         }
 
         public float getColumnThickness() {
@@ -522,6 +565,7 @@ public final class PreviewV2Config {
     public static final class GuideSettings {
 
         private boolean enabled = true;
+        private boolean glowEnabled = false;
 
         private String material =
                 DEFAULT_GUIDE_MATERIAL;
@@ -534,6 +578,7 @@ public final class PreviewV2Config {
                     new GuideSettings();
 
             copy.enabled = enabled;
+            copy.glowEnabled = glowEnabled;
             copy.material = material;
             copy.spacing = spacing;
             copy.width = width;
@@ -571,6 +616,14 @@ public final class PreviewV2Config {
 
         public void setEnabled(boolean enabled) {
             this.enabled = enabled;
+        }
+
+        public boolean isGlowEnabled() {
+            return glowEnabled;
+        }
+
+        public void setGlowEnabled(boolean glowEnabled) {
+            this.glowEnabled = glowEnabled;
         }
 
         public String getMaterial() {
@@ -850,4 +903,5 @@ public final class PreviewV2Config {
         );
     }
 }
+
 

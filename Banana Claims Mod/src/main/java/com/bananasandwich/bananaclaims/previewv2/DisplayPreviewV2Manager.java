@@ -1,9 +1,12 @@
+// Banana Claims Renderer Compile Fix v4 - mapping-safe cleanup
 package com.bananasandwich.bananaclaims.previewv2;
 
+import com.bananasandwich.bananaclaims.Bananaclaims;
 import com.bananasandwich.bananaclaims.claim.Claim;
 import com.bananasandwich.bananaclaims.claim.ClaimChunk;
 import com.bananasandwich.bananaclaims.selection.ClaimSelection;
 import com.mojang.math.Transformation;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
@@ -57,6 +60,10 @@ public final class DisplayPreviewV2Manager {
 
         ServerTickEvents.END_SERVER_TICK.register(
                 this::tick
+        );
+
+        ServerLifecycleEvents.SERVER_STOPPING.register(
+                this::discardAllSessions
         );
     }
 
@@ -509,6 +516,7 @@ public final class DisplayPreviewV2Manager {
                     border.getThickness(),
                     context.materials()
                             .getBorderState(),
+                    border.isGlowEnabled(),
                     context.config()
             );
 
@@ -580,6 +588,7 @@ public final class DisplayPreviewV2Manager {
                     runEndZ - runStartZ,
                     context.materials()
                             .getBorderState(),
+                    border.isGlowEnabled(),
                     context.config()
             );
 
@@ -650,6 +659,7 @@ public final class DisplayPreviewV2Manager {
             float scaleY,
             float scaleZ,
             BlockState blockState,
+            boolean glowEnabled,
             PreviewV2Config config
     ) {
         if (scaleX <= 0.0F
@@ -703,6 +713,7 @@ public final class DisplayPreviewV2Manager {
         display.setHeight(scaleY);
         display.setGlowingTag(
                 config.isGlowEnabled()
+                        && glowEnabled
         );
         display.setGlowColorOverride(
                 config.getGlowColorRgb()
@@ -830,6 +841,7 @@ public final class DisplayPreviewV2Manager {
                 guides.getWidth(),
                 context.materials()
                         .getGuideState(),
+                guides.isGlowEnabled(),
                 config
         );
 
@@ -857,6 +869,7 @@ public final class DisplayPreviewV2Manager {
                 guides.getWidth(),
                 context.materials()
                         .getGuideState(),
+                guides.isGlowEnabled(),
                 config
         );
     }
@@ -899,6 +912,7 @@ public final class DisplayPreviewV2Manager {
                     cornerSettings.getSize(),
                     context.materials()
                             .getCornerState(),
+                    cornerSettings.isAnchorGlowEnabled(),
                     config
             );
 
@@ -933,6 +947,7 @@ public final class DisplayPreviewV2Manager {
                     cornerSettings.getColumnThickness(),
                     context.materials()
                             .getCornerState(),
+                    cornerSettings.isColumnGlowEnabled(),
                     config
             );
 
@@ -962,6 +977,7 @@ public final class DisplayPreviewV2Manager {
                     cornerSettings.getColumnThickness(),
                     context.materials()
                             .getCornerState(),
+                    cornerSettings.isColumnGlowEnabled(),
                     config
             );
         }
@@ -1086,6 +1102,18 @@ public final class DisplayPreviewV2Manager {
         if (!edges.remove(normalized)) {
             edges.add(normalized);
         }
+    }
+
+    private void discardAllSessions(
+            MinecraftServer server
+    ) {
+        for (DisplaySession session : sessions.values()) {
+            discardAll(
+                    session.displays()
+            );
+        }
+
+        sessions.clear();
     }
 
     private boolean startSession(
@@ -1222,8 +1250,3 @@ public final class DisplayPreviewV2Manager {
         }
     }
 }
-
-
-
-
-

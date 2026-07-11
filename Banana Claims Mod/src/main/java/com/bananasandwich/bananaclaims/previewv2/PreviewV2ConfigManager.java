@@ -9,6 +9,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -200,6 +201,24 @@ public final class PreviewV2ConfigManager {
         return configPath;
     }
 
+    public String getDurationDescription() {
+        BigDecimal seconds =
+                BigDecimal.valueOf(
+                                getConfig().getDurationTicks()
+                        )
+                        .divide(
+                                BigDecimal.valueOf(20L)
+                        )
+                        .stripTrailingZeros();
+
+        String unit =
+                seconds.compareTo(BigDecimal.ONE) == 0
+                        ? " second"
+                        : " seconds";
+
+        return seconds.toPlainString() + unit;
+    }
+
     Snapshot snapshot() {
         return snapshot;
     }
@@ -364,4 +383,5 @@ public final class PreviewV2ConfigManager {
     ) {
     }
 }
+
 

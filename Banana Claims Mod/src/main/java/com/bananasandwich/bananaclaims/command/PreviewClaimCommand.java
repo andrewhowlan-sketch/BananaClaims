@@ -8,6 +8,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Comparator;
@@ -161,17 +162,18 @@ public final class PreviewClaimCommand {
     ) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
 
-        boolean stoppedLegacy =
-                Bananaclaims.BOUNDARY_PREVIEW_MANAGER.stop(
-                        player.getUUID()
-                );
-
-        boolean stoppedV2 =
+        boolean rendererV2Stopped =
                 Bananaclaims.DISPLAY_PREVIEW_V2_MANAGER.stop(
                         player.getUUID()
                 );
 
-        if (!stoppedLegacy && !stoppedV2) {
+        boolean legacyStopped =
+                Bananaclaims.BOUNDARY_PREVIEW_MANAGER.stop(
+                        player.getUUID()
+                );
+
+        if (!rendererV2Stopped
+                && !legacyStopped) {
             source.sendFailure(
                     Component.literal(
                             "You do not have an active claim preview."
@@ -196,8 +198,9 @@ public final class PreviewClaimCommand {
             ServerPlayer player,
             Claim claim
     ) {
-        if (!player.level()
-                .dimension()
+        ServerLevel level = player.level();
+
+        if (!level.dimension()
                 .toString()
                 .equals(claim.getDimension())) {
             source.sendFailure(
@@ -213,28 +216,34 @@ public final class PreviewClaimCommand {
                 player.getUUID()
         );
 
-        boolean created =
+        boolean shown =
                 Bananaclaims.DISPLAY_PREVIEW_V2_MANAGER
                         .showClaimDisplay(
                                 player,
                                 claim
                         );
 
-        if (!created) {
+        if (!shown) {
             source.sendFailure(
                     Component.literal(
-                            "Unable to create a solid preview for that claim."
+                            "Unable to create a preview for that claim."
                     )
             );
 
             return 0;
         }
 
+        String duration =
+                Bananaclaims.PREVIEW_V2_CONFIG_MANAGER
+                        .getDurationDescription();
+
         source.sendSuccess(
                 () -> Component.literal(
-                        "Showing the solid terrain-following boundary for claim \""
+                        "Showing the 3D boundary for claim \""
                                 + claim.getName()
-                                + "\" for 10 seconds."
+                                + "\" for "
+                                + duration
+                                + "."
                 ),
                 false
         );
@@ -260,5 +269,6 @@ public final class PreviewClaimCommand {
                 .orElse(Double.MAX_VALUE);
     }
 }
+
 
 
