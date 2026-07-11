@@ -111,7 +111,18 @@ public class ClaimManager {
                 )
         );
 
-        if (claim == null) {
+        return removeClaim(claim);
+    }
+
+    /**
+     * Removes a managed claim by stable identity. This is preferred by
+     * administrative tools because it remains correct even when the claim's
+     * original anchor chunk has changed.
+     */
+    public boolean removeClaim(
+            Claim claim
+    ) {
+        if (!isManagedClaim(claim)) {
             return false;
         }
 
@@ -346,6 +357,61 @@ public class ClaimManager {
 
         if (!claim.canTransfer(actorUuid)) {
             return ClaimMutationResult.NOT_AUTHORIZED;
+        }
+
+        if (claim.isOwner(newOwnerUuid)) {
+            return ClaimMutationResult.SAME_OWNER;
+        }
+
+        boolean duplicateClaimName = claims.stream()
+                .filter(ownedClaim ->
+                        ownedClaim != claim
+                                && ownedClaim.isOwner(newOwnerUuid)
+                )
+                .map(Claim::getName)
+                .filter(ownedName ->
+                        ownedName != null
+                                && claim.getName() != null
+                )
+                .anyMatch(ownedName ->
+                        ownedName.equalsIgnoreCase(claim.getName())
+                );
+
+        if (duplicateClaimName) {
+            return ClaimMutationResult.DUPLICATE_OWNER_CLAIM_NAME;
+        }
+
+        if (!claim.transferOwnership(
+                newOwnerUuid,
+                newOwnerName
+        )) {
+            return ClaimMutationResult.NO_CHANGE;
+        }
+
+        commitMutation(
+                ClaimChangeType.OWNERSHIP_TRANSFERRED,
+                claim
+        );
+
+        return ClaimMutationResult.OWNERSHIP_TRANSFERRED;
+    }
+
+    /**
+     * Administrative ownership transfer. Authorization is intentionally
+     * bypassed, while role invariants and duplicate owner/name safeguards are
+     * still enforced.
+     */
+    public ClaimMutationResult forceTransferOwnership(
+            Claim claim,
+            UUID newOwnerUuid,
+            String newOwnerName
+    ) {
+        if (!isManagedClaim(claim)) {
+            return ClaimMutationResult.CLAIM_NOT_FOUND;
+        }
+
+        if (newOwnerUuid == null) {
+            return ClaimMutationResult.INVALID_PLAYER;
         }
 
         if (claim.isOwner(newOwnerUuid)) {

@@ -2,34 +2,130 @@ package com.bananasandwich.bananaclaims.command;
 
 import com.bananasandwich.bananaclaims.Bananaclaims;
 import com.bananasandwich.bananaclaims.claim.Claim;
-import com.bananasandwich.bananaclaims.claim.ClaimFlags;
+import com.bananasandwich.bananaclaims.claim.ClaimFlagDefinition;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
+import java.util.List;
 import java.util.Optional;
 
-public class FlagClaimCommand {
+public final class FlagClaimCommand {
+
+    private FlagClaimCommand() {
+    }
 
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return Commands.literal("flag")
-                .then(Commands.argument("claim", StringArgumentType.word())
-                        .suggests(ClaimSuggestions.MANAGED_CLAIMS)
-                        .then(Commands.argument("flag", StringArgumentType.word())
-                                .then(Commands.argument("value", BoolArgumentType.bool())
-                                        .executes(context -> updateFlag(
-                                                context.getSource(),
-                                                StringArgumentType.getString(context, "claim"),
-                                                StringArgumentType.getString(context, "flag"),
-                                                BoolArgumentType.getBool(context, "value")
-                                        ))
+                .then(Commands.argument(
+                                        "claim",
+                                        StringArgumentType.word()
                                 )
-                        )
+                                .suggests(
+                                        ClaimSuggestions.MANAGED_CLAIMS
+                                )
+                                .then(Commands.argument(
+                                                        "flag",
+                                                        StringArgumentType.word()
+                                                )
+                                                .suggests((context, builder) ->
+                                                        SharedSuggestionProvider.suggest(
+                                                                ClaimFlagDefinition.canonicalNames(),
+                                                                builder
+                                                        )
+                                                )
+                                                .executes(context ->
+                                                        showFlag(
+                                                                context.getSource(),
+                                                                StringArgumentType.getString(
+                                                                        context,
+                                                                        "claim"
+                                                                ),
+                                                                StringArgumentType.getString(
+                                                                        context,
+                                                                        "flag"
+                                                                )
+                                                        )
+                                                )
+                                                .then(Commands.argument(
+                                                                        "value",
+                                                                        BoolArgumentType.bool()
+                                                                )
+                                                                .suggests((context, builder) ->
+                                                                        SharedSuggestionProvider.suggest(
+                                                                                List.of(
+                                                                                        "true",
+                                                                                        "false"
+                                                                                ),
+                                                                                builder
+                                                                        )
+                                                                )
+                                                                .executes(context ->
+                                                                        updateFlag(
+                                                                                context.getSource(),
+                                                                                StringArgumentType.getString(
+                                                                                        context,
+                                                                                        "claim"
+                                                                                ),
+                                                                                StringArgumentType.getString(
+                                                                                        context,
+                                                                                        "flag"
+                                                                                ),
+                                                                                BoolArgumentType.getBool(
+                                                                                        context,
+                                                                                        "value"
+                                                                                )
+                                                                        )
+                                                                )
+                                                )
+                                )
                 );
+    }
+
+    private static int showFlag(
+            CommandSourceStack source,
+            String claimName,
+            String flagName
+    ) {
+        Optional<Claim> optionalClaim = resolveManagedClaim(
+                source,
+                claimName
+        );
+
+        if (optionalClaim.isEmpty()) {
+            return 0;
+        }
+
+        Optional<ClaimFlagDefinition> optionalFlag =
+                ClaimFlagDefinition.findCommandFlag(flagName);
+
+        if (optionalFlag.isEmpty()) {
+            sendUnknownFlag(source, flagName);
+            return 0;
+        }
+
+        Claim claim = optionalClaim.get();
+        ClaimFlagDefinition flag = optionalFlag.get();
+        boolean value = flag.getValue(claim.getFlags());
+
+        source.sendSuccess(
+                () -> Component.literal(
+                        flag.getCanonicalName()
+                                + " is "
+                                + value
+                                + " for claim \""
+                                + claim.getName()
+                                + "\"."
+                ),
+                false
+        );
+
+        return 1;
     }
 
     private static int updateFlag(
@@ -38,13 +134,95 @@ public class FlagClaimCommand {
             String flagName,
             boolean value
     ) {
-        ServerPlayer player;
+        Optional<Claim> optionalClaim = resolveManagedClaim(
+                source,
+                claimName
+        );
 
-        try {
-            player = source.getPlayerOrException();
-        } catch (Exception exception) {
-            source.sendFailure(Component.literal("Only players can edit claim flags."));
+        if (optionalClaim.isEmpty()) {
             return 0;
+        }
+
+        Claim claim = optionalClaim.get();
+        ServerPlayer player = source.getPlayer();
+
+        if (player == null
+                || !claim.canEditFlags(player.getUUID())) {
+            source.sendFailure(
+                    Component.literal(
+                            "You cannot edit flags for claim \""
+                                    + claim.getName()
+                                    + "\"."
+                    )
+            );
+
+            return 0;
+        }
+
+        Optional<ClaimFlagDefinition> optionalFlag =
+                ClaimFlagDefinition.findCommandFlag(flagName);
+
+        if (optionalFlag.isEmpty()) {
+            sendUnknownFlag(source, flagName);
+            return 0;
+        }
+
+        ClaimFlagDefinition flag = optionalFlag.get();
+        boolean previousValue = flag.getValue(claim.getFlags());
+
+        if (previousValue == value) {
+            source.sendSuccess(
+                    () -> Component.literal(
+                            flag.getCanonicalName()
+                                    + " is already "
+                                    + value
+                                    + " for claim \""
+                                    + claim.getName()
+                                    + "\"."
+                    ),
+                    false
+            );
+
+            return 1;
+        }
+
+        flag.setValue(
+                claim.getFlags(),
+                value
+        );
+
+        Bananaclaims.CLAIM_MANAGER.saveClaims();
+
+        source.sendSuccess(
+                () -> Component.literal(
+                        "Set "
+                                + flag.getCanonicalName()
+                                + " to "
+                                + value
+                                + " for claim \""
+                                + claim.getName()
+                                + "\"."
+                ),
+                false
+        );
+
+        return 1;
+    }
+
+    private static Optional<Claim> resolveManagedClaim(
+            CommandSourceStack source,
+            String claimName
+    ) {
+        ServerPlayer player = source.getPlayer();
+
+        if (player == null) {
+            source.sendFailure(
+                    Component.literal(
+                            "Only players can edit claim flags."
+                    )
+            );
+
+            return Optional.empty();
         }
 
         Optional<Claim> optionalClaim =
@@ -54,58 +232,33 @@ public class FlagClaimCommand {
                 );
 
         if (optionalClaim.isEmpty()) {
-            source.sendFailure(Component.literal(
-                    "You cannot manage a claim named \""
-                            + claimName
-                            + "\"."
-            ));
-            return 0;
+            source.sendFailure(
+                    Component.literal(
+                            "You cannot manage a claim named \""
+                                    + claimName
+                                    + "\"."
+                    )
+            );
         }
 
-        Claim claim = optionalClaim.get();
-
-        if (!claim.canEditFlags(player.getUUID())) {
-            source.sendFailure(Component.literal(
-                    "You cannot edit flags for claim \""
-                            + claim.getName()
-                            + "\"."
-            ));
-            return 0;
-        }
-
-        if (!setFlag(claim.getFlags(), flagName, value)) {
-            source.sendFailure(Component.literal("Unknown flag: " + flagName));
-            return 0;
-        }
-
-        Bananaclaims.CLAIM_MANAGER.saveClaims();
-
-        source.sendSuccess(
-                () -> Component.literal(
-                        "Set " + flagName + " to " + value
-                                + " for claim \"" + claim.getName() + "\"."
-                ),
-                false
-        );
-
-        return 1;
+        return optionalClaim;
     }
 
-    private static boolean setFlag(ClaimFlags flags, String flagName, boolean value) {
-        switch (flagName.toLowerCase()) {
-            case "breakblocks" -> flags.setBreakBlocks(value);
-            case "placeblocks" -> flags.setPlaceBlocks(value);
-            case "interact" -> flags.setInteract(value);
-            case "containers" -> flags.setContainers(value);
-            case "entities" -> flags.setEntities(value);
-            case "pvp" -> flags.setPvp(value);
-            case "explosions" -> flags.setExplosions(value);
-            case "firespread" -> flags.setFireSpread(value);
-            default -> {
-                return false;
-            }
-        }
-
-        return true;
+    private static void sendUnknownFlag(
+            CommandSourceStack source,
+            String flagName
+    ) {
+        source.sendFailure(
+                Component.literal(
+                        "Unknown flag \""
+                                + flagName
+                                + "\". Available flags: "
+                                + String.join(
+                                ", ",
+                                ClaimFlagDefinition.canonicalNames()
+                        )
+                                + "."
+                )
+        );
     }
 }

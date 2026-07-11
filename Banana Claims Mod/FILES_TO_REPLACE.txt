@@ -1,0 +1,12 @@
+REPLACE
+src/main/java/com/bananasandwich/bananaclaims/Claim/ClaimManager.java
+src/main/java/com/bananasandwich/bananaclaims/command/ClaimCommand.java
+src/main/java/com/bananasandwich/bananaclaims/command/FlagClaimCommand.java
+src/main/java/com/bananasandwich/bananaclaims/storage/ClaimStorage.java
+
+ADD
+src/main/java/com/bananasandwich/bananaclaims/Claim/ClaimFlagDefinition.java
+src/main/java/com/bananasandwich/bananaclaims/command/admin/AdminClaimCommand.java
+src/main/java/com/bananasandwich/bananaclaims/command/admin/AdminClaimPermission.java
+src/main/java/com/bananasandwich/bananaclaims/command/admin/AdminClaimSelector.java
+src/main/java/com/bananasandwich/bananaclaims/command/admin/ClaimDiagnostics.java

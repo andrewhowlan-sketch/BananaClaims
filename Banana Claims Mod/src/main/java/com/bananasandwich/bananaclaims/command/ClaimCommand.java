@@ -1,5 +1,6 @@
 package com.bananasandwich.bananaclaims.command;
 
+import com.bananasandwich.bananaclaims.command.admin.AdminClaimCommand;
 import com.bananasandwich.bananaclaims.command.member.MemberCommand;
 import com.bananasandwich.bananaclaims.command.subowner.SubOwnerCommand;
 import com.mojang.brigadier.CommandDispatcher;
@@ -43,6 +44,7 @@ public class ClaimCommand {
                         .then(TransferClaimCommand.register())
                         .then(FlagClaimCommand.register())
                         .then(PopupClaimCommand.register())
+                        .then(AdminClaimCommand.register())
         );
     }
 }
