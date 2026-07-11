@@ -5,14 +5,13 @@ import com.bananasandwich.bananaclaims.claim.ClaimChunk;
 import com.bananasandwich.bananaclaims.selection.ClaimSelection;
 import com.mojang.math.Transformation;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Display;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
@@ -22,52 +21,32 @@ import org.joml.Vector3f;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
 public final class DisplayPreviewV2Manager {
 
-    private static final int TEST_DURATION_TICKS =
-            10 * 20;
+    private final PreviewV2ConfigManager configManager;
 
-    private static final int RECTANGLE_SIZE =
-            8;
-
-    private static final float BORDER_HEIGHT =
-            0.35F;
-
-    private static final float BORDER_THICKNESS =
-            0.35F;
-
-    private static final double TERRAIN_OFFSET =
-            0.18D;
-
-    private static final float CORNER_MARKER_SIZE =
-            1.15F;
-
-    private static final float CORNER_MARKER_HEIGHT =
-            1.15F;
-
-    private static final float CORNER_COLUMN_THICKNESS =
-            0.28F;
-
-    private static final double CORNER_COLUMN_GAP =
-            0.10D;
-
-    private static final int GUIDE_COLUMN_INTERVAL =
-            16;
-
-    private static final float GUIDE_COLUMN_THICKNESS =
-            0.18F;
-
-    private final Map<UUID, TestDisplaySession> sessions =
+    private final Map<UUID, DisplaySession> sessions =
             new HashMap<>();
 
     private boolean registered;
+
+    public DisplayPreviewV2Manager(
+            PreviewV2ConfigManager configManager
+    ) {
+        this.configManager =
+                Objects.requireNonNull(
+                        configManager,
+                        "configManager"
+                );
+    }
 
     public void register() {
         if (registered) {
@@ -88,7 +67,7 @@ public final class DisplayPreviewV2Manager {
             return false;
         }
 
-        TestDisplaySession existing =
+        DisplaySession existing =
                 sessions.remove(playerUuid);
 
         if (existing == null) {
@@ -128,16 +107,25 @@ public final class DisplayPreviewV2Manager {
             return false;
         }
 
-        removeExistingSession(
-                player.getUUID()
-        );
-
         List<PerimeterEdge> perimeterEdges =
                 createClaimPerimeterEdges(claim);
 
         if (perimeterEdges.isEmpty()) {
             return false;
         }
+
+        PreviewV2ConfigManager.Snapshot snapshot =
+                configManager.snapshot();
+
+        RenderContext context =
+                new RenderContext(
+                        snapshot.config(),
+                        snapshot.materials()
+                );
+
+        removeExistingSession(
+                player.getUUID()
+        );
 
         List<Display.BlockDisplay> displays =
                 new ArrayList<>();
@@ -149,7 +137,8 @@ public final class DisplayPreviewV2Manager {
                         displays,
                         edge.startX(),
                         edge.endX(),
-                        edge.startZ()
+                        edge.startZ(),
+                        context
                 );
             } else {
                 appendContouredZEdge(
@@ -157,7 +146,8 @@ public final class DisplayPreviewV2Manager {
                         displays,
                         edge.startZ(),
                         edge.endZ(),
-                        edge.startX()
+                        edge.startX(),
+                        context
                 );
             }
         }
@@ -168,33 +158,25 @@ public final class DisplayPreviewV2Manager {
         appendCornerAnchors(
                 level,
                 displays,
-                trueCorners
+                trueCorners,
+                context
         );
 
         appendGuideColumns(
                 level,
                 displays,
                 perimeterEdges,
-                trueCorners
+                trueCorners,
+                context
         );
 
-        if (displays.isEmpty()) {
-            return false;
-        }
-
-        long currentTick =
-                server.getTickCount();
-
-        sessions.put(
-                player.getUUID(),
-                new TestDisplaySession(
-                        List.copyOf(displays),
-                        currentTick
-                                + TEST_DURATION_TICKS
-                )
+        return startSession(
+                player,
+                server,
+                displays,
+                context.config()
+                        .getDurationTicks()
         );
-
-        return true;
     }
 
     public boolean showSelectionDisplay(
@@ -228,10 +210,6 @@ public final class DisplayPreviewV2Manager {
             return false;
         }
 
-        removeExistingSession(
-                player.getUUID()
-        );
-
         int minX =
                 Math.min(
                         selection.getPos1().getX(),
@@ -256,107 +234,15 @@ public final class DisplayPreviewV2Manager {
                         selection.getPos2().getZ()
                 ) + 1;
 
-        List<Display.BlockDisplay> displays =
-                new ArrayList<>();
-
-        appendContouredXEdge(
+        return showRectangleDisplay(
+                player,
                 level,
-                displays,
+                server,
                 minX,
                 maxX,
-                minZ
-        );
-
-        appendContouredXEdge(
-                level,
-                displays,
-                minX,
-                maxX,
+                minZ,
                 maxZ
         );
-
-        appendContouredZEdge(
-                level,
-                displays,
-                minZ,
-                maxZ,
-                minX
-        );
-
-        appendContouredZEdge(
-                level,
-                displays,
-                minZ,
-                maxZ,
-                maxX
-        );
-
-        Set<PerimeterPoint> selectionCorners =
-                Set.of(
-                        new PerimeterPoint(minX, minZ),
-                        new PerimeterPoint(maxX, minZ),
-                        new PerimeterPoint(maxX, maxZ),
-                        new PerimeterPoint(minX, maxZ)
-                );
-
-        List<PerimeterEdge> selectionEdges =
-                List.of(
-                        new PerimeterEdge(
-                                minX,
-                                minZ,
-                                maxX,
-                                minZ
-                        ),
-                        new PerimeterEdge(
-                                maxX,
-                                minZ,
-                                maxX,
-                                maxZ
-                        ),
-                        new PerimeterEdge(
-                                minX,
-                                maxZ,
-                                maxX,
-                                maxZ
-                        ),
-                        new PerimeterEdge(
-                                minX,
-                                minZ,
-                                minX,
-                                maxZ
-                        )
-                );
-
-        appendCornerAnchors(
-                level,
-                displays,
-                selectionCorners
-        );
-
-        appendGuideColumns(
-                level,
-                displays,
-                selectionEdges,
-                selectionCorners
-        );
-
-        if (displays.isEmpty()) {
-            return false;
-        }
-
-        long currentTick =
-                server.getTickCount();
-
-        sessions.put(
-                player.getUUID(),
-                new TestDisplaySession(
-                        List.copyOf(displays),
-                        currentTick
-                                + TEST_DURATION_TICKS
-                )
-        );
-
-        return true;
     }
 
     public boolean showTestDisplay(
@@ -376,9 +262,9 @@ public final class DisplayPreviewV2Manager {
             return false;
         }
 
-        removeExistingSession(
-                player.getUUID()
-        );
+        PreviewV2Config config =
+                configManager.snapshot()
+                        .config();
 
         Vec3 horizontalLook =
                 new Vec3(
@@ -402,29 +288,64 @@ public final class DisplayPreviewV2Manager {
         int centerX =
                 (int) Math.floor(
                         player.getX()
-                                + horizontalLook.x * 7.0D
+                                + horizontalLook.x
+                                * config.getTestPreviewDistance()
                 );
 
         int centerZ =
                 (int) Math.floor(
                         player.getZ()
-                                + horizontalLook.z * 7.0D
+                                + horizontalLook.z
+                                * config.getTestPreviewDistance()
                 );
 
         int halfSize =
-                RECTANGLE_SIZE / 2;
+                config.getTestPreviewSize() / 2;
 
         int minX =
                 centerX - halfSize;
 
         int maxX =
-                minX + RECTANGLE_SIZE;
+                minX + config.getTestPreviewSize();
 
         int minZ =
                 centerZ - halfSize;
 
         int maxZ =
-                minZ + RECTANGLE_SIZE;
+                minZ + config.getTestPreviewSize();
+
+        return showRectangleDisplay(
+                player,
+                level,
+                server,
+                minX,
+                maxX,
+                minZ,
+                maxZ
+        );
+    }
+
+    private boolean showRectangleDisplay(
+            ServerPlayer player,
+            ServerLevel level,
+            MinecraftServer server,
+            int minX,
+            int maxX,
+            int minZ,
+            int maxZ
+    ) {
+        PreviewV2ConfigManager.Snapshot snapshot =
+                configManager.snapshot();
+
+        RenderContext context =
+                new RenderContext(
+                        snapshot.config(),
+                        snapshot.materials()
+                );
+
+        removeExistingSession(
+                player.getUUID()
+        );
 
         List<Display.BlockDisplay> displays =
                 new ArrayList<>();
@@ -434,7 +355,8 @@ public final class DisplayPreviewV2Manager {
                 displays,
                 minX,
                 maxX,
-                minZ
+                minZ,
+                context
         );
 
         appendContouredXEdge(
@@ -442,7 +364,8 @@ public final class DisplayPreviewV2Manager {
                 displays,
                 minX,
                 maxX,
-                maxZ
+                maxZ,
+                context
         );
 
         appendContouredZEdge(
@@ -450,7 +373,8 @@ public final class DisplayPreviewV2Manager {
                 displays,
                 minZ,
                 maxZ,
-                minX
+                minX,
+                context
         );
 
         appendContouredZEdge(
@@ -458,10 +382,11 @@ public final class DisplayPreviewV2Manager {
                 displays,
                 minZ,
                 maxZ,
-                maxX
+                maxX,
+                context
         );
 
-        Set<PerimeterPoint> selectionCorners =
+        Set<PerimeterPoint> rectangleCorners =
                 Set.of(
                         new PerimeterPoint(minX, minZ),
                         new PerimeterPoint(maxX, minZ),
@@ -469,7 +394,7 @@ public final class DisplayPreviewV2Manager {
                         new PerimeterPoint(minX, maxZ)
                 );
 
-        List<PerimeterEdge> selectionEdges =
+        List<PerimeterEdge> rectangleEdges =
                 List.of(
                         new PerimeterEdge(
                                 minX,
@@ -500,33 +425,25 @@ public final class DisplayPreviewV2Manager {
         appendCornerAnchors(
                 level,
                 displays,
-                selectionCorners
+                rectangleCorners,
+                context
         );
 
         appendGuideColumns(
                 level,
                 displays,
-                selectionEdges,
-                selectionCorners
+                rectangleEdges,
+                rectangleCorners,
+                context
         );
 
-        if (displays.isEmpty()) {
-            return false;
-        }
-
-        long currentTick =
-                server.getTickCount();
-
-        sessions.put(
-                player.getUUID(),
-                new TestDisplaySession(
-                        List.copyOf(displays),
-                        currentTick
-                                + TEST_DURATION_TICKS
-                )
+        return startSession(
+                player,
+                server,
+                displays,
+                context.config()
+                        .getDurationTicks()
         );
-
-        return true;
     }
 
     private static void appendContouredXEdge(
@@ -534,8 +451,13 @@ public final class DisplayPreviewV2Manager {
             List<Display.BlockDisplay> displays,
             int minX,
             int maxX,
-            int z
+            int z,
+            RenderContext context
     ) {
+        PreviewV2Config.BorderSettings border =
+                context.config()
+                        .getBorder();
+
         int runStartX =
                 minX;
 
@@ -543,7 +465,9 @@ public final class DisplayPreviewV2Manager {
                 terrainHeight(
                         level,
                         minX,
-                        z
+                        z,
+                        context.config()
+                                .getTerrain()
                 );
 
         for (int x = minX + 1;
@@ -553,7 +477,9 @@ public final class DisplayPreviewV2Manager {
                     terrainHeight(
                             level,
                             x,
-                            z
+                            z,
+                            context.config()
+                                    .getTerrain()
                     );
 
             boolean reachedEnd =
@@ -575,14 +501,15 @@ public final class DisplayPreviewV2Manager {
                     displays,
                     runStartX,
                     runHeight
-                            + TERRAIN_OFFSET,
+                            + border.getTerrainOffset(),
                     z
-                            - BORDER_THICKNESS / 2.0D,
+                            - border.getThickness() / 2.0D,
                     runEndX - runStartX,
-                    BORDER_HEIGHT,
-                    BORDER_THICKNESS,
-                    Blocks.AMETHYST_BLOCK
-                            .defaultBlockState()
+                    border.getHeight(),
+                    border.getThickness(),
+                    context.materials()
+                            .getBorderState(),
+                    context.config()
             );
 
             runStartX = x;
@@ -595,8 +522,13 @@ public final class DisplayPreviewV2Manager {
             List<Display.BlockDisplay> displays,
             int minZ,
             int maxZ,
-            int x
+            int x,
+            RenderContext context
     ) {
+        PreviewV2Config.BorderSettings border =
+                context.config()
+                        .getBorder();
+
         int runStartZ =
                 minZ;
 
@@ -604,7 +536,9 @@ public final class DisplayPreviewV2Manager {
                 terrainHeight(
                         level,
                         x,
-                        minZ
+                        minZ,
+                        context.config()
+                                .getTerrain()
                 );
 
         for (int z = minZ + 1;
@@ -614,7 +548,9 @@ public final class DisplayPreviewV2Manager {
                     terrainHeight(
                             level,
                             x,
-                            z
+                            z,
+                            context.config()
+                                    .getTerrain()
                     );
 
             boolean reachedEnd =
@@ -635,15 +571,16 @@ public final class DisplayPreviewV2Manager {
                     level,
                     displays,
                     x
-                            - BORDER_THICKNESS / 2.0D,
+                            - border.getThickness() / 2.0D,
                     runHeight
-                            + TERRAIN_OFFSET,
+                            + border.getTerrainOffset(),
                     runStartZ,
-                    BORDER_THICKNESS,
-                    BORDER_HEIGHT,
+                    border.getThickness(),
+                    border.getHeight(),
                     runEndZ - runStartZ,
-                    Blocks.AMETHYST_BLOCK
-                            .defaultBlockState()
+                    context.materials()
+                            .getBorderState(),
+                    context.config()
             );
 
             runStartZ = z;
@@ -654,7 +591,8 @@ public final class DisplayPreviewV2Manager {
     private static int terrainHeight(
             ServerLevel level,
             int x,
-            int z
+            int z,
+            PreviewV2Config.TerrainSettings terrain
     ) {
         int topY =
                 level.getHeight(
@@ -680,11 +618,19 @@ public final class DisplayPreviewV2Manager {
                     z
             );
 
-            var blockState =
+            BlockState blockState =
                     level.getBlockState(position);
 
-            if (!blockState.is(BlockTags.LOGS)
-                    && !blockState.is(BlockTags.LEAVES)) {
+            boolean ignoredLog =
+                    terrain.isIgnoreLogs()
+                            && blockState.is(BlockTags.LOGS);
+
+            boolean ignoredLeaves =
+                    terrain.isIgnoreLeaves()
+                            && blockState.is(BlockTags.LEAVES);
+
+            if (!ignoredLog
+                    && !ignoredLeaves) {
                 return topY + 1;
             }
 
@@ -703,7 +649,8 @@ public final class DisplayPreviewV2Manager {
             float scaleX,
             float scaleY,
             float scaleZ,
-            BlockState blockState
+            BlockState blockState,
+            PreviewV2Config config
     ) {
         if (scaleX <= 0.0F
                 || scaleY <= 0.0F
@@ -738,9 +685,15 @@ public final class DisplayPreviewV2Manager {
                 )
         );
 
-        display.setViewRange(4.0F);
-        display.setShadowRadius(0.0F);
-        display.setShadowStrength(0.0F);
+        display.setViewRange(
+                config.getViewRange()
+        );
+        display.setShadowRadius(
+                config.getShadowRadius()
+        );
+        display.setShadowStrength(
+                config.getShadowStrength()
+        );
         display.setWidth(
                 Math.max(
                         scaleX,
@@ -748,8 +701,12 @@ public final class DisplayPreviewV2Manager {
                 )
         );
         display.setHeight(scaleY);
-        display.setGlowingTag(true);
-        display.setGlowColorOverride(0xA855F7);
+        display.setGlowingTag(
+                config.isGlowEnabled()
+        );
+        display.setGlowColorOverride(
+                config.getGlowColorRgb()
+        );
         display.setNoGravity(true);
 
         boolean added =
@@ -767,8 +724,17 @@ public final class DisplayPreviewV2Manager {
             ServerLevel level,
             List<Display.BlockDisplay> displays,
             List<PerimeterEdge> edges,
-            Set<PerimeterPoint> cornerPoints
+            Set<PerimeterPoint> cornerPoints,
+            RenderContext context
     ) {
+        PreviewV2Config.GuideSettings guides =
+                context.config()
+                        .getGuides();
+
+        if (!guides.isEnabled()) {
+            return;
+        }
+
         Set<PerimeterPoint> guidePoints =
                 new LinkedHashSet<>();
 
@@ -791,9 +757,9 @@ public final class DisplayPreviewV2Manager {
                             edge.endZ() - edge.startZ()
                     );
 
-            for (int offset = GUIDE_COLUMN_INTERVAL;
+            for (int offset = guides.getSpacing();
                  offset < length;
-                 offset += GUIDE_COLUMN_INTERVAL) {
+                 offset += guides.getSpacing()) {
                 guidePoints.add(
                         new PerimeterPoint(
                                 edge.startX()
@@ -811,7 +777,8 @@ public final class DisplayPreviewV2Manager {
             appendFullHeightGuideColumn(
                     level,
                     displays,
-                    guidePoint
+                    guidePoint,
+                    context
             );
         }
     }
@@ -819,23 +786,34 @@ public final class DisplayPreviewV2Manager {
     private static void appendFullHeightGuideColumn(
             ServerLevel level,
             List<Display.BlockDisplay> displays,
-            PerimeterPoint point
+            PerimeterPoint point,
+            RenderContext context
     ) {
+        PreviewV2Config config =
+                context.config();
+
+        PreviewV2Config.BorderSettings border =
+                config.getBorder();
+
+        PreviewV2Config.GuideSettings guides =
+                config.getGuides();
+
         int surfaceY =
                 terrainHeight(
                         level,
                         point.x(),
-                        point.z()
+                        point.z(),
+                        config.getTerrain()
                 );
 
         double upperY =
                 surfaceY
-                        + TERRAIN_OFFSET
-                        + BORDER_HEIGHT;
+                        + border.getTerrainOffset()
+                        + border.getHeight();
 
         float upperHeight =
                 (float) Math.max(
-                        1.0D,
+                        config.getMinimumColumnHeight(),
                         level.getMaxY() - upperY
                 );
 
@@ -843,15 +821,16 @@ public final class DisplayPreviewV2Manager {
                 level,
                 displays,
                 point.x()
-                        - GUIDE_COLUMN_THICKNESS / 2.0D,
+                        - guides.getWidth() / 2.0D,
                 upperY,
                 point.z()
-                        - GUIDE_COLUMN_THICKNESS / 2.0D,
-                GUIDE_COLUMN_THICKNESS,
+                        - guides.getWidth() / 2.0D,
+                guides.getWidth(),
                 upperHeight,
-                GUIDE_COLUMN_THICKNESS,
-                Blocks.AMETHYST_BLOCK
-                        .defaultBlockState()
+                guides.getWidth(),
+                context.materials()
+                        .getGuideState(),
+                config
         );
 
         double lowerY =
@@ -859,9 +838,9 @@ public final class DisplayPreviewV2Manager {
 
         float lowerHeight =
                 (float) Math.max(
-                        1.0D,
+                        config.getMinimumColumnHeight(),
                         surfaceY
-                                + TERRAIN_OFFSET
+                                + border.getTerrainOffset()
                                 - lowerY
                 );
 
@@ -869,56 +848,73 @@ public final class DisplayPreviewV2Manager {
                 level,
                 displays,
                 point.x()
-                        - GUIDE_COLUMN_THICKNESS / 2.0D,
+                        - guides.getWidth() / 2.0D,
                 lowerY,
                 point.z()
-                        - GUIDE_COLUMN_THICKNESS / 2.0D,
-                GUIDE_COLUMN_THICKNESS,
+                        - guides.getWidth() / 2.0D,
+                guides.getWidth(),
                 lowerHeight,
-                GUIDE_COLUMN_THICKNESS,
-                Blocks.AMETHYST_BLOCK
-                        .defaultBlockState()
+                guides.getWidth(),
+                context.materials()
+                        .getGuideState(),
+                config
         );
     }
 
     private static void appendCornerAnchors(
             ServerLevel level,
             List<Display.BlockDisplay> displays,
-            Set<PerimeterPoint> corners
+            Set<PerimeterPoint> corners,
+            RenderContext context
     ) {
+        PreviewV2Config config =
+                context.config();
+
+        PreviewV2Config.BorderSettings border =
+                config.getBorder();
+
+        PreviewV2Config.CornerSettings cornerSettings =
+                config.getCorners();
+
         for (PerimeterPoint corner : corners) {
             int surfaceY =
                     terrainHeight(
                             level,
                             corner.x(),
-                            corner.z()
+                            corner.z(),
+                            config.getTerrain()
                     );
 
             addDisplay(
                     level,
                     displays,
                     corner.x()
-                            - CORNER_MARKER_SIZE / 2.0D,
+                            - cornerSettings.getSize() / 2.0D,
                     surfaceY
-                            + TERRAIN_OFFSET,
+                            + border.getTerrainOffset(),
                     corner.z()
-                            - CORNER_MARKER_SIZE / 2.0D,
-                    CORNER_MARKER_SIZE,
-                    CORNER_MARKER_HEIGHT,
-                    CORNER_MARKER_SIZE,
-                    Blocks.LAPIS_BLOCK
-                            .defaultBlockState()
+                            - cornerSettings.getSize() / 2.0D,
+                    cornerSettings.getSize(),
+                    cornerSettings.getHeight(),
+                    cornerSettings.getSize(),
+                    context.materials()
+                            .getCornerState(),
+                    config
             );
+
+            if (!cornerSettings.isColumnsEnabled()) {
+                continue;
+            }
 
             double upperColumnY =
                     surfaceY
-                            + TERRAIN_OFFSET
-                            + CORNER_MARKER_HEIGHT
-                            + CORNER_COLUMN_GAP;
+                            + border.getTerrainOffset()
+                            + cornerSettings.getHeight()
+                            + cornerSettings.getColumnGap();
 
             float upperColumnHeight =
                     (float) Math.max(
-                            1.0D,
+                            config.getMinimumColumnHeight(),
                             level.getMaxY() - upperColumnY
                     );
 
@@ -926,15 +922,18 @@ public final class DisplayPreviewV2Manager {
                     level,
                     displays,
                     corner.x()
-                            - CORNER_COLUMN_THICKNESS / 2.0D,
+                            - cornerSettings.getColumnThickness()
+                            / 2.0D,
                     upperColumnY,
                     corner.z()
-                            - CORNER_COLUMN_THICKNESS / 2.0D,
-                    CORNER_COLUMN_THICKNESS,
+                            - cornerSettings.getColumnThickness()
+                            / 2.0D,
+                    cornerSettings.getColumnThickness(),
                     upperColumnHeight,
-                    CORNER_COLUMN_THICKNESS,
-                    Blocks.LAPIS_BLOCK
-                            .defaultBlockState()
+                    cornerSettings.getColumnThickness(),
+                    context.materials()
+                            .getCornerState(),
+                    config
             );
 
             double lowerColumnY =
@@ -942,9 +941,9 @@ public final class DisplayPreviewV2Manager {
 
             float lowerColumnHeight =
                     (float) Math.max(
-                            1.0D,
+                            config.getMinimumColumnHeight(),
                             surfaceY
-                                    + TERRAIN_OFFSET
+                                    + border.getTerrainOffset()
                                     - lowerColumnY
                     );
 
@@ -952,15 +951,18 @@ public final class DisplayPreviewV2Manager {
                     level,
                     displays,
                     corner.x()
-                            - CORNER_COLUMN_THICKNESS / 2.0D,
+                            - cornerSettings.getColumnThickness()
+                            / 2.0D,
                     lowerColumnY,
                     corner.z()
-                            - CORNER_COLUMN_THICKNESS / 2.0D,
-                    CORNER_COLUMN_THICKNESS,
+                            - cornerSettings.getColumnThickness()
+                            / 2.0D,
+                    cornerSettings.getColumnThickness(),
                     lowerColumnHeight,
-                    CORNER_COLUMN_THICKNESS,
-                    Blocks.LAPIS_BLOCK
-                            .defaultBlockState()
+                    cornerSettings.getColumnThickness(),
+                    context.materials()
+                            .getCornerState(),
+                    config
             );
         }
     }
@@ -1086,6 +1088,31 @@ public final class DisplayPreviewV2Manager {
         }
     }
 
+    private boolean startSession(
+            ServerPlayer player,
+            MinecraftServer server,
+            List<Display.BlockDisplay> displays,
+            int durationTicks
+    ) {
+        if (displays.isEmpty()) {
+            return false;
+        }
+
+        long currentTick =
+                server.getTickCount();
+
+        sessions.put(
+                player.getUUID(),
+                new DisplaySession(
+                        List.copyOf(displays),
+                        currentTick
+                                + durationTicks
+                )
+        );
+
+        return true;
+    }
+
     private void tick(
             MinecraftServer server
     ) {
@@ -1096,15 +1123,15 @@ public final class DisplayPreviewV2Manager {
         long currentTick =
                 server.getTickCount();
 
-        Iterator<Map.Entry<UUID, TestDisplaySession>> iterator =
+        Iterator<Map.Entry<UUID, DisplaySession>> iterator =
                 sessions.entrySet()
                         .iterator();
 
         while (iterator.hasNext()) {
-            Map.Entry<UUID, TestDisplaySession> entry =
+            Map.Entry<UUID, DisplaySession> entry =
                     iterator.next();
 
-            TestDisplaySession session =
+            DisplaySession session =
                     entry.getValue();
 
             if (currentTick
@@ -1123,7 +1150,7 @@ public final class DisplayPreviewV2Manager {
     private void removeExistingSession(
             UUID playerUuid
     ) {
-        TestDisplaySession existing =
+        DisplaySession existing =
                 sessions.remove(playerUuid);
 
         if (existing == null) {
@@ -1148,6 +1175,12 @@ public final class DisplayPreviewV2Manager {
                 display.discard();
             }
         }
+    }
+
+    private record RenderContext(
+            PreviewV2Config config,
+            PreviewV2Materials materials
+    ) {
     }
 
     private record PerimeterPoint(
@@ -1180,11 +1213,11 @@ public final class DisplayPreviewV2Manager {
         }
     }
 
-    private record TestDisplaySession(
+    private record DisplaySession(
             List<Display.BlockDisplay> displays,
             long expiryTick
     ) {
-        private TestDisplaySession {
+        private DisplaySession {
             displays = List.copyOf(displays);
         }
     }
