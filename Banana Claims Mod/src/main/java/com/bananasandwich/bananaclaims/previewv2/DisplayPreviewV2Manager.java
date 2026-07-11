@@ -1093,9 +1093,7 @@ public final class DisplayPreviewV2Manager {
                 AnimationTimeline.resolve(config);
 
         float initialScale =
-                animation.fadeInTicks() > 0
-                        ? animation.minimumScale()
-                        : 1.0F;
+                animation.initialScale();
 
         List<ClientDisplay> clientDisplays =
                 new ArrayList<>(displays.size());
@@ -1403,104 +1401,130 @@ public final class DisplayPreviewV2Manager {
             return;
         }
 
+        AnimationPhase phase =
+                animation.phaseAt(
+                        currentTick,
+                        session.startTick(),
+                        session.expiryTick()
+                );
+
         float targetScale =
                 calculateAnimationScale(
                         session,
-                        currentTick
+                        currentTick,
+                        phase
                 );
 
-        if (Math.abs(
-                targetScale - session.lastScale()
-        ) < ANIMATION_SCALE_EPSILON) {
-            return;
-        }
+        boolean phaseChanged =
+                phase != session.lastAnimationPhase();
 
-        boolean reachedFadeInEnd =
-                animation.fadeInTicks() > 0
-                        && currentTick
-                        >= session.startTick()
-                        + animation.fadeInTicks()
-                        && session.lastScale() < 1.0F;
-
-        boolean reachedFadeOutEnd =
+        boolean reachedSessionEnd =
                 currentTick
                         >= session.expiryTick() - 1L;
 
         boolean updateIntervalElapsed =
                 currentTick
                         - session.lastAnimationUpdateTick()
-                        >= animation.updateIntervalTicks();
+                        >= animation.updateIntervalTicks(phase);
 
-        if (!reachedFadeInEnd
-                && !reachedFadeOutEnd
+        if (!phaseChanged
+                && !reachedSessionEnd
                 && !updateIntervalElapsed) {
             return;
         }
 
-        for (ClientDisplay display : session.displays()) {
-            updateClientDisplayScale(
-                    player,
-                    display,
-                    targetScale
-            );
+        boolean scaleChanged =
+                Math.abs(
+                        targetScale - session.lastScale()
+                ) >= ANIMATION_SCALE_EPSILON;
+
+        if (scaleChanged) {
+            for (ClientDisplay display : session.displays()) {
+                updateClientDisplayScale(
+                        player,
+                        display,
+                        targetScale
+                );
+            }
         }
 
-        session.recordAnimationUpdate(
+        session.recordAnimationState(
                 currentTick,
-                targetScale
+                targetScale,
+                phase
         );
     }
 
     private static float calculateAnimationScale(
             DisplaySession session,
-            long currentTick
+            long currentTick,
+            AnimationPhase phase
     ) {
         AnimationTimeline animation =
                 session.animation();
 
-        long elapsedTicks =
-                Math.max(
-                        0L,
-                        currentTick - session.startTick()
+        return switch (phase) {
+            case FADE_IN -> {
+                long elapsedTicks =
+                        Math.max(
+                                0L,
+                                currentTick - session.startTick()
+                        );
+
+                float progress =
+                        (float) elapsedTicks
+                                / animation.fadeInTicks();
+
+                yield interpolateScale(
+                        animation.fadeMinimumScale(),
+                        1.0F,
+                        progress
                 );
+            }
 
-        if (animation.fadeInTicks() > 0
-                && elapsedTicks
-                < animation.fadeInTicks()) {
-            float progress =
-                    (float) elapsedTicks
-                            / animation.fadeInTicks();
-
-            return interpolateFadeScale(
-                    animation.minimumScale(),
-                    progress
+            case PULSE -> animation.pulseScaleAt(
+                    currentTick,
+                    session.startTick()
             );
-        }
 
-        long remainingTicks =
-                Math.max(
-                        0L,
-                        session.expiryTick() - currentTick
+            case FADE_OUT -> {
+                long remainingTicks =
+                        Math.max(
+                                0L,
+                                session.expiryTick() - currentTick
+                        );
+
+                float progress =
+                        (float) remainingTicks
+                                / animation.fadeOutTicks();
+
+                float fadeOutStartScale =
+                        animation.fadeOutStartScale(
+                                session.startTick(),
+                                session.expiryTick()
+                        );
+
+                float fadeOutEndScale =
+                        Math.max(
+                                0.001F,
+                                animation.fadeMinimumScale()
+                                        * fadeOutStartScale
+                        );
+
+                yield interpolateScale(
+                        fadeOutEndScale,
+                        fadeOutStartScale,
+                        progress
                 );
+            }
 
-        if (animation.fadeOutTicks() > 0
-                && remainingTicks
-                <= animation.fadeOutTicks()) {
-            float progress =
-                    (float) remainingTicks
-                            / animation.fadeOutTicks();
-
-            return interpolateFadeScale(
-                    animation.minimumScale(),
-                    progress
-            );
-        }
-
-        return 1.0F;
+            case STEADY -> 1.0F;
+        };
     }
 
-    private static float interpolateFadeScale(
-            float minimumScale,
+    private static float interpolateScale(
+            float startScale,
+            float endScale,
             float progress
     ) {
         float clampedProgress =
@@ -1515,8 +1539,8 @@ public final class DisplayPreviewV2Manager {
                         * (3.0F
                         - 2.0F * clampedProgress);
 
-        return minimumScale
-                + (1.0F - minimumScale)
+        return startScale
+                + (endScale - startScale)
                 * smoothProgress;
     }
 
@@ -1639,11 +1663,22 @@ public final class DisplayPreviewV2Manager {
         }
     }
 
+    private enum AnimationPhase {
+        FADE_IN,
+        STEADY,
+        PULSE,
+        FADE_OUT
+    }
+
     private record AnimationTimeline(
             int fadeInTicks,
             int fadeOutTicks,
-            int updateIntervalTicks,
-            float minimumScale
+            int fadeUpdateIntervalTicks,
+            float fadeMinimumScale,
+            boolean pulseEnabled,
+            int pulsePeriodTicks,
+            int pulseUpdateIntervalTicks,
+            float pulseMinimumScale
     ) {
         private static AnimationTimeline resolve(
                 PreviewV2Config config
@@ -1651,77 +1686,194 @@ public final class DisplayPreviewV2Manager {
             PreviewV2Config.AnimationSettings animations =
                     config.getAnimations();
 
-            if (!animations.isFadeEnabled()) {
-                return new AnimationTimeline(
-                        0,
-                        0,
-                        animations.getFadeUpdateIntervalTicks(),
-                        animations.getFadeMinimumScale()
-                );
-            }
-
             int durationTicks =
                     Math.max(
                             1,
                             config.getDurationTicks()
                     );
 
-            int fadeInTicks =
-                    Math.max(
-                            0,
-                            animations.getFadeInTicks()
-                    );
+            int fadeInTicks = 0;
+            int fadeOutTicks = 0;
 
-            int fadeOutTicks =
-                    Math.max(
-                            0,
-                            animations.getFadeOutTicks()
-                    );
+            if (animations.isFadeEnabled()) {
+                fadeInTicks =
+                        Math.max(
+                                0,
+                                animations.getFadeInTicks()
+                        );
 
-            int combinedFadeTicks =
-                    fadeInTicks + fadeOutTicks;
+                fadeOutTicks =
+                        Math.max(
+                                0,
+                                animations.getFadeOutTicks()
+                        );
 
-            if (combinedFadeTicks > durationTicks) {
-                if (fadeInTicks == 0) {
-                    fadeOutTicks = durationTicks;
-                } else if (fadeOutTicks == 0) {
-                    fadeInTicks = durationTicks;
-                } else if (durationTicks == 1) {
-                    fadeInTicks = 1;
-                    fadeOutTicks = 0;
-                } else {
-                    double fadeInRatio =
-                            (double) fadeInTicks
-                                    / combinedFadeTicks;
+                int combinedFadeTicks =
+                        fadeInTicks + fadeOutTicks;
 
-                    fadeInTicks =
-                            Math.max(
-                                    1,
-                                    Math.min(
-                                            durationTicks - 1,
-                                            (int) Math.round(
-                                                    durationTicks
-                                                            * fadeInRatio
-                                            )
-                                    )
-                            );
+                if (combinedFadeTicks > durationTicks) {
+                    if (fadeInTicks == 0) {
+                        fadeOutTicks = durationTicks;
+                    } else if (fadeOutTicks == 0) {
+                        fadeInTicks = durationTicks;
+                    } else if (durationTicks == 1) {
+                        fadeInTicks = 1;
+                        fadeOutTicks = 0;
+                    } else {
+                        double fadeInRatio =
+                                (double) fadeInTicks
+                                        / combinedFadeTicks;
 
-                    fadeOutTicks =
-                            durationTicks - fadeInTicks;
+                        fadeInTicks =
+                                Math.max(
+                                        1,
+                                        Math.min(
+                                                durationTicks - 1,
+                                                (int) Math.round(
+                                                        durationTicks
+                                                                * fadeInRatio
+                                                )
+                                        )
+                                );
+
+                        fadeOutTicks =
+                                durationTicks - fadeInTicks;
+                    }
                 }
             }
+
+            boolean pulseEnabled =
+                    animations.isPulseEnabled()
+                            && animations.getPulseMinimumScale()
+                            < 1.0F - ANIMATION_SCALE_EPSILON;
 
             return new AnimationTimeline(
                     fadeInTicks,
                     fadeOutTicks,
                     animations.getFadeUpdateIntervalTicks(),
-                    animations.getFadeMinimumScale()
+                    animations.getFadeMinimumScale(),
+                    pulseEnabled,
+                    animations.getPulsePeriodTicks(),
+                    animations.getPulseUpdateIntervalTicks(),
+                    animations.getPulseMinimumScale()
             );
         }
 
         private boolean active() {
             return fadeInTicks > 0
-                    || fadeOutTicks > 0;
+                    || fadeOutTicks > 0
+                    || pulseEnabled;
+        }
+
+        private float initialScale() {
+            return fadeInTicks > 0
+                    ? fadeMinimumScale
+                    : 1.0F;
+        }
+
+        private AnimationPhase phaseAt(
+                long currentTick,
+                long startTick,
+                long expiryTick
+        ) {
+            long elapsedTicks =
+                    Math.max(
+                            0L,
+                            currentTick - startTick
+                    );
+
+            if (fadeInTicks > 0
+                    && elapsedTicks < fadeInTicks) {
+                return AnimationPhase.FADE_IN;
+            }
+
+            long fadeOutStartTick =
+                    expiryTick - fadeOutTicks;
+
+            if (fadeOutTicks > 0
+                    && currentTick >= fadeOutStartTick) {
+                return AnimationPhase.FADE_OUT;
+            }
+
+            if (pulseEnabled) {
+                return AnimationPhase.PULSE;
+            }
+
+            return AnimationPhase.STEADY;
+        }
+
+        private int updateIntervalTicks(
+                AnimationPhase phase
+        ) {
+            return switch (phase) {
+                case FADE_IN, FADE_OUT ->
+                        fadeUpdateIntervalTicks;
+                case PULSE ->
+                        pulseUpdateIntervalTicks;
+                case STEADY ->
+                        Integer.MAX_VALUE;
+            };
+        }
+
+        private float pulseScaleAt(
+                long currentTick,
+                long startTick
+        ) {
+            if (!pulseEnabled) {
+                return 1.0F;
+            }
+
+            long pulseStartTick =
+                    startTick + fadeInTicks;
+
+            long pulseElapsedTicks =
+                    Math.max(
+                            0L,
+                            currentTick - pulseStartTick
+                    );
+
+            double phase =
+                    (pulseElapsedTicks % pulsePeriodTicks)
+                            / (double) pulsePeriodTicks;
+
+            double wave =
+                    0.5D
+                            + 0.5D
+                            * Math.cos(
+                            phase
+                                    * Math.PI
+                                    * 2.0D
+                    );
+
+            return (float) (
+                    pulseMinimumScale
+                            + (1.0F - pulseMinimumScale)
+                            * wave
+            );
+        }
+
+        private float fadeOutStartScale(
+                long startTick,
+                long expiryTick
+        ) {
+            if (!pulseEnabled) {
+                return 1.0F;
+            }
+
+            long pulseStartTick =
+                    startTick + fadeInTicks;
+
+            long fadeOutStartTick =
+                    expiryTick - fadeOutTicks;
+
+            if (fadeOutStartTick <= pulseStartTick) {
+                return 1.0F;
+            }
+
+            return pulseScaleAt(
+                    fadeOutStartTick,
+                    startTick
+            );
         }
     }
 
@@ -1737,6 +1889,7 @@ public final class DisplayPreviewV2Manager {
 
         private long lastAnimationUpdateTick;
         private float lastScale;
+        private AnimationPhase lastAnimationPhase;
 
         private DisplaySession(
                 MinecraftServer server,
@@ -1784,6 +1937,13 @@ public final class DisplayPreviewV2Manager {
 
             this.lastScale =
                     initialScale;
+
+            this.lastAnimationPhase =
+                    animation.phaseAt(
+                            startTick,
+                            startTick,
+                            expiryTick
+                    );
         }
 
         private MinecraftServer server() {
@@ -1822,15 +1982,23 @@ public final class DisplayPreviewV2Manager {
             return lastScale;
         }
 
-        private void recordAnimationUpdate(
+        private AnimationPhase lastAnimationPhase() {
+            return lastAnimationPhase;
+        }
+
+        private void recordAnimationState(
                 long updateTick,
-                float scale
+                float scale,
+                AnimationPhase phase
         ) {
             lastAnimationUpdateTick =
                     updateTick;
 
             lastScale =
                     scale;
+
+            lastAnimationPhase =
+                    phase;
         }
     }
 }

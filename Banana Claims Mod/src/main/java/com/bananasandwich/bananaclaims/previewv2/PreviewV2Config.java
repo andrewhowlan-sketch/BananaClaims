@@ -11,7 +11,7 @@ import java.util.Locale;
  */
 public final class PreviewV2Config {
 
-    public static final int CURRENT_CONFIG_VERSION = 3;
+    public static final int CURRENT_CONFIG_VERSION = 4;
 
     public static final String DEFAULT_GLOW_COLOR =
             "#A855F7";
@@ -187,6 +187,10 @@ public final class PreviewV2Config {
 
         if (previousConfigVersion < 3) {
             changed |= animations.applyVersion3Defaults();
+        }
+
+        if (previousConfigVersion < 4) {
+            changed |= animations.applyVersion4Defaults();
         }
 
         changed |= border.sanitize();
@@ -695,9 +699,8 @@ public final class PreviewV2Config {
     }
 
     /**
-     * Reserved settings for the planned Renderer V2 animation milestone.
-     * They are persisted now so future animation work can use the same config
-     * schema without a breaking migration.
+     * Renderer V2 animation settings shared by commands, packet rendering,
+     * and the future Book GUI.
      */
     public static final class AnimationSettings {
 
@@ -708,6 +711,7 @@ public final class PreviewV2Config {
         private float fadeMinimumScale = 0.05F;
         private boolean pulseEnabled = false;
         private int pulsePeriodTicks = 20;
+        private int pulseUpdateIntervalTicks = 2;
         private float pulseMinimumScale = 0.90F;
 
         private AnimationSettings copy() {
@@ -721,6 +725,7 @@ public final class PreviewV2Config {
             copy.fadeMinimumScale = fadeMinimumScale;
             copy.pulseEnabled = pulseEnabled;
             copy.pulsePeriodTicks = pulsePeriodTicks;
+            copy.pulseUpdateIntervalTicks = pulseUpdateIntervalTicks;
             copy.pulseMinimumScale = pulseMinimumScale;
 
             return copy;
@@ -732,6 +737,15 @@ public final class PreviewV2Config {
                     && fadeOutTicks == 0) {
                 fadeInTicks = 10;
                 fadeOutTicks = 10;
+                return true;
+            }
+
+            return false;
+        }
+
+        private boolean applyVersion4Defaults() {
+            if (pulseUpdateIntervalTicks <= 0) {
+                pulseUpdateIntervalTicks = 2;
                 return true;
             }
 
@@ -772,9 +786,16 @@ public final class PreviewV2Config {
             fadeMinimumScale = sanitizedFadeMinimumScale;
 
             int sanitizedPulsePeriodTicks =
-                    clamp(pulsePeriodTicks, 1, 20 * 60 * 30);
+                    clamp(pulsePeriodTicks, 2, 20 * 60 * 30);
             changed |= sanitizedPulsePeriodTicks != pulsePeriodTicks;
             pulsePeriodTicks = sanitizedPulsePeriodTicks;
+
+            int sanitizedPulseUpdateIntervalTicks =
+                    clamp(pulseUpdateIntervalTicks, 1, 20);
+            changed |= sanitizedPulseUpdateIntervalTicks
+                    != pulseUpdateIntervalTicks;
+            pulseUpdateIntervalTicks =
+                    sanitizedPulseUpdateIntervalTicks;
 
             float sanitizedPulseMinimumScale =
                     finiteFloat(
@@ -852,6 +873,17 @@ public final class PreviewV2Config {
 
         public void setPulsePeriodTicks(int pulsePeriodTicks) {
             this.pulsePeriodTicks = pulsePeriodTicks;
+        }
+
+        public int getPulseUpdateIntervalTicks() {
+            return pulseUpdateIntervalTicks;
+        }
+
+        public void setPulseUpdateIntervalTicks(
+                int pulseUpdateIntervalTicks
+        ) {
+            this.pulseUpdateIntervalTicks =
+                    pulseUpdateIntervalTicks;
         }
 
         public float getPulseMinimumScale() {
