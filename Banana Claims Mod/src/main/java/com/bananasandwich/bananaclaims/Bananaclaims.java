@@ -7,6 +7,7 @@ import com.bananasandwich.bananaclaims.notification.ClaimNotificationManager;
 import com.bananasandwich.bananaclaims.previewv2.DisplayPreviewV2Manager;
 import com.bananasandwich.bananaclaims.previewv2.PreviewV2ConfigManager;
 import com.bananasandwich.bananaclaims.protection.ClaimProtectionManager;
+import com.bananasandwich.bananaclaims.protection.ClaimProtectionService;
 import com.bananasandwich.bananaclaims.selection.SelectionManager;
 import com.bananasandwich.bananaclaims.storage.ClaimStorage;
 import net.fabricmc.api.ModInitializer;
@@ -40,6 +41,16 @@ public class Bananaclaims implements ModInitializer {
 					PREVIEW_V2_CONFIG_MANAGER
 			);
 
+	public static final ClaimProtectionService CLAIM_PROTECTION_SERVICE =
+			new ClaimProtectionService(
+					CLAIM_MANAGER
+			);
+
+	public static final ClaimProtectionManager CLAIM_PROTECTION_MANAGER =
+			new ClaimProtectionManager(
+					CLAIM_PROTECTION_SERVICE
+			);
+
 	@Override
 	public void onInitialize() {
 		LOGGER.info("Banana Claims loaded!");
@@ -58,7 +69,7 @@ public class Bananaclaims implements ModInitializer {
 
 		DISPLAY_PREVIEW_V2_MANAGER.register();
 		ClaimNotificationManager.register();
-		ClaimProtectionManager.register();
+		CLAIM_PROTECTION_MANAGER.register();
 		BlueMapIntegration.register();
 	}
 
