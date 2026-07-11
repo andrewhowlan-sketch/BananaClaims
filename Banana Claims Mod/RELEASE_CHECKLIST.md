@@ -3,48 +3,58 @@
 ## Build
 
 - [ ] Run `.\gradlew.bat clean build`
-- [ ] Confirm no compiler warnings indicate missing mixin targets
-- [ ] Confirm the release JAR contains `fabric.mod.json`, mixin config, language file, and icon
-- [ ] Confirm Java 25 is used for the production build
+- [ ] Confirm Java 25 is used
+- [ ] Confirm no mixin target warnings
+- [ ] Inspect the release JAR resources and metadata
 
-## Fresh Installation
+## Fresh and Upgrade Installation
 
 - [ ] Start with no Banana Claims config directory
-- [ ] Confirm both configuration files are generated
-- [ ] Confirm an empty claims file is handled safely
-- [ ] Confirm the server starts without BlueMap or LuckPerms installed
-
-## Upgrade Installation
-
-- [ ] Back up `config/bananaclaims/`
-- [ ] Start with existing claims and preview config
-- [ ] Confirm claim IDs and roles migrate without duplicates
-- [ ] Confirm preview config remains version 4
-- [ ] Confirm BlueMap removes obsolete marker IDs and redraws claims
+- [ ] Confirm main config version 2 and preview config version 4 generate
+- [ ] Start with existing claims from the production-like server
+- [ ] Confirm role, flag, popup, and BlueMap-style migration
+- [ ] Confirm startup without BlueMap or LuckPerms
 
 ## Claims and Roles
 
-- [ ] Create single-chunk and area claims
-- [ ] Expand and shrink irregular claims
-- [ ] Rename, describe, list, and delete claims
-- [ ] Add and remove members
-- [ ] Promote and demote subowners
-- [ ] Test member and subowner leave behavior
-- [ ] Transfer ownership and restart
+- [ ] Create, resize, rename, describe, preview, and delete claims
+- [ ] Add/remove members and promote/demote subowners
+- [ ] Test leave, step-down, and ownership transfer
+- [ ] Restart and confirm persistence
+
+## Invitations
+
+- [ ] Invite from command and Book GUI
+- [ ] Accept and deny from chat and Book GUI
+- [ ] Cancel outgoing invitations
+- [ ] Test duplicate, self, participant, limit, and authorization rejection
+- [ ] Test expiration and online notification
+- [ ] Confirm transfer and deletion cancel pending invitations
+- [ ] Confirm restart clears pending invitations
+- [ ] Test duplicate claim names using `claim@inviter` selectors
+
+## Book GUI
+
+- [ ] Open with `/claim`, `/claim book`, and `/claim book <claim>`
+- [ ] Test owner, subowner, and member page visibility
+- [ ] Test claim switching
+- [ ] Test flags, popup mode, preview, and BlueMap presets
+- [ ] Test member and subowner confirmation pages
+- [ ] Test leave and delete confirmations
+- [ ] Confirm expired or copied action tokens cannot bypass checks
+- [ ] Confirm free-text links prefill usable commands
 
 ## Protection
 
-- [ ] Verify every active flag with an outsider
-- [ ] Verify owner, subowner, member, and permission bypass
+- [ ] Test every active flag with an outsider
+- [ ] Test owner, subowner, member, and permission bypass
 - [ ] Test normal and weighted pressure plates
 - [ ] Test cross-boundary explosions
 - [ ] Confirm new claims remain unprotected by default
 
 ## Preview
 
-- [ ] Test old and new claims
-- [ ] Test irregular and disconnected outlines
-- [ ] Test selection preview
+- [ ] Test old, new, irregular, and selection previews
 - [ ] Test stop, expiration, dimension change, and disconnect
 - [ ] Test two-player visibility isolation
 - [ ] Test fade and pulse enabled and disabled
@@ -52,23 +62,24 @@
 ## BlueMap
 
 - [ ] Test without BlueMap installed
-- [ ] Test startup with BlueMap installed
-- [ ] Confirm claim creation, update, transfer, and deletion refresh markers
-- [ ] Confirm HTML escaping for claim names and descriptions
-- [ ] Confirm disconnected claim sections render
+- [ ] Test creation, update, transfer, and deletion
+- [ ] Test fill/line colors, opacity, width, presets, and reset
+- [ ] Confirm style persistence after restart
+- [ ] Confirm disconnected claims and holes
+- [ ] Confirm HTML escaping
 
 ## Permissions and Administration
 
+- [ ] Test Book, invite, and BlueMap nodes
 - [ ] Test external permission grants and explicit denies
 - [ ] Test vanilla fallback levels
-- [ ] Test granular admin nodes
-- [ ] Test force transfer and confirmed force delete
-- [ ] Test main, claims, and preview reloads
-- [ ] Run global and claim diagnostics
+- [ ] Test granular admin nodes and diagnostics
+- [ ] Test force transfer, force delete, and reloads
 
-## Release Decision
+## Release
 
-- [ ] Resolve or explicitly defer the missing invitation system noted in `DEVELOPMENT.md`
 - [ ] Confirm documentation matches the shipped command tree
+- [ ] Confirm staff guide is approved
 - [ ] Update version and changelog
+- [ ] Create a clean release JAR
 - [ ] Tag the release commit

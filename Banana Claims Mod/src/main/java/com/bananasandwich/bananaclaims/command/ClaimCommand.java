@@ -30,12 +30,24 @@ public class ClaimCommand {
                                 return 0;
                             }
 
-                            context.getSource().sendSuccess(
-                                    () -> BananaClaimsMessages.text("command.bananaclaims.loaded"),
-                                    false
-                            );
+                            if (!Bananaclaims.PERMISSION_SERVICE.has(
+                                    context.getSource(),
+                                    ClaimPermission.BOOK
+                            )) {
+                                context.getSource().sendFailure(
+                                        BananaClaimsMessages.text("command.bananaclaims.permission_denied")
+                                );
+                                return 0;
+                            }
 
-                            return 1;
+                            try {
+                                return BookClaimCommand.open(context.getSource());
+                            } catch (Exception exception) {
+                                context.getSource().sendFailure(
+                                        BananaClaimsMessages.text("command.bananaclaims.error.players_only")
+                                );
+                                return 0;
+                            }
                         })
                         .then(require(
                                 SelectionClaimCommand.registerPos1(),
@@ -64,6 +76,14 @@ public class ClaimCommand {
                         .then(require(
                                 PreviewClaimCommand.register(),
                                 ClaimPermission.PREVIEW
+                        ))
+                        .then(require(
+                                BookClaimCommand.register(),
+                                ClaimPermission.BOOK
+                        ))
+                        .then(require(
+                                InviteClaimCommand.register(),
+                                ClaimPermission.INVITE
                         ))
                         .then(require(
                                 LeaveClaimCommand.register(),
@@ -108,6 +128,10 @@ public class ClaimCommand {
                         .then(require(
                                 PopupClaimCommand.register(),
                                 ClaimPermission.POPUP
+                        ))
+                        .then(require(
+                                BlueMapClaimCommand.register(),
+                                ClaimPermission.BLUEMAP
                         ))
                         .then(AdminClaimCommand.register())
         );

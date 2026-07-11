@@ -153,6 +153,22 @@ public final class BananaClaimsConfigManager {
                 .getDenialMessageCooldownTicks();
     }
 
+    public boolean areInvitationsEnabled() {
+        return config.getInvitations().isEnabled();
+    }
+
+    public int getInvitationExpirationSeconds() {
+        return config.getInvitations().getExpirationSeconds();
+    }
+
+    public int getMaxPendingInvitationsPerClaim() {
+        return config.getInvitations().getMaxPendingPerClaim();
+    }
+
+    public boolean shouldNotifyInvitationExpiration() {
+        return config.getInvitations().isNotifyOnExpiration();
+    }
+
     private BananaClaimsConfig readConfig()
             throws IOException {
         if (!Files.exists(configPath)) {

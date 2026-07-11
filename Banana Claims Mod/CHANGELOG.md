@@ -4,24 +4,24 @@
 
 ### Added
 
-- Multi-chunk and irregular claims
-- Owner, subowner, and member lifecycle management
-- Client-isolated Renderer V2 with configuration, fade, and pulse
-- Opt-in block, interaction, container, entity, PvP, and explosion protection
-- Administrative lookup, diagnostics, force transfer, force delete, and reload tools
-- Granular permission nodes with Fabric Permissions API and LuckPerms support
-- Server-resolved language catalog for vanilla-client compatibility
-- Release documentation and test checklist
+- Optional server-generated Book GUI for nearly all player-facing claim management
+- Secure player-bound Book GUI sessions and destructive-action confirmation pages
+- Session-based invitations with invite, accept, deny, cancel, list, timeout, and automatic lifecycle cleanup
+- Invitation controls inside the Book GUI
+- Per-claim BlueMap fill color, line color, opacity, and line-width settings
+- BlueMap appearance commands and Book GUI presets
+- Permission nodes for the Book GUI, invitations, and BlueMap appearance
+- Main-config invitation settings
+- Staff-facing documentation
 
 ### Improved
 
-- BlueMap now updates individual changed claims rather than scanning all claims for every event
-- BlueMap supports multiple disconnected claim outlines
-- BlueMap details use clearer role sections and escaped HTML
-- Claim data writes now use temporary-file replacement
-- Reserved, unenforced flags are hidden from player flag commands
-- Placeholder template client code and example mixins were removed
+- Bare `/claim` now opens the management book
+- Invitation selectors remain unambiguous when claim names repeat across owners
+- Commands and the Book GUI share the same claim mutation services
+- BlueMap updates immediately after style changes
+- Existing claim data automatically receives default BlueMap styles
 
-### Known Release-Candidate Gap
+### Existing 1.0 Systems
 
-- The current uploaded source does not contain the previously documented invitation system. This must be restored, reimplemented, or explicitly deferred before declaring the final 1.0 feature set.
+- Claims, roles, lifecycle, notifications, Renderer V2, protection, administration, permissions, localization, BlueMap integration, atomic persistence, and release documentation

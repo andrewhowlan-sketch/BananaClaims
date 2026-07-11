@@ -16,7 +16,7 @@ import java.util.Map;
  */
 public final class BananaClaimsConfig {
 
-    public static final int CURRENT_CONFIG_VERSION = 1;
+    public static final int CURRENT_CONFIG_VERSION = 2;
 
     private int configVersion;
 
@@ -25,6 +25,9 @@ public final class BananaClaimsConfig {
 
     private ProtectionSettings protection =
             new ProtectionSettings();
+
+    private InvitationSettings invitations =
+            new InvitationSettings();
 
     public static BananaClaimsConfig defaults() {
         return new BananaClaimsConfig();
@@ -41,6 +44,9 @@ public final class BananaClaimsConfig {
         copy.protection = protection == null
                 ? null
                 : protection.copy();
+        copy.invitations = invitations == null
+                ? null
+                : invitations.copy();
 
         return copy;
     }
@@ -63,8 +69,14 @@ public final class BananaClaimsConfig {
             changed = true;
         }
 
+        if (invitations == null) {
+            invitations = new InvitationSettings();
+            changed = true;
+        }
+
         changed |= permissions.sanitize();
         changed |= protection.sanitize();
+        changed |= invitations.sanitize();
 
         return changed;
     }
@@ -79,6 +91,10 @@ public final class BananaClaimsConfig {
 
     public ProtectionSettings getProtection() {
         return protection;
+    }
+
+    public InvitationSettings getInvitations() {
+        return invitations;
     }
 
     public static final class PermissionSettings {
@@ -257,6 +273,54 @@ public final class BananaClaimsConfig {
 
         public int getDenialMessageCooldownTicks() {
             return denialMessageCooldownTicks;
+        }
+    }
+
+
+    public static final class InvitationSettings {
+
+        private boolean enabled = true;
+        private int expirationSeconds = 300;
+        private int maxPendingPerClaim = 20;
+        private boolean notifyOnExpiration = true;
+
+        private InvitationSettings copy() {
+            InvitationSettings copy = new InvitationSettings();
+            copy.enabled = enabled;
+            copy.expirationSeconds = expirationSeconds;
+            copy.maxPendingPerClaim = maxPendingPerClaim;
+            copy.notifyOnExpiration = notifyOnExpiration;
+            return copy;
+        }
+
+        private boolean sanitize() {
+            boolean changed = false;
+
+            int sanitizedExpiration = Math.max(30, Math.min(24 * 60 * 60, expirationSeconds));
+            changed |= sanitizedExpiration != expirationSeconds;
+            expirationSeconds = sanitizedExpiration;
+
+            int sanitizedLimit = Math.max(1, Math.min(100, maxPendingPerClaim));
+            changed |= sanitizedLimit != maxPendingPerClaim;
+            maxPendingPerClaim = sanitizedLimit;
+
+            return changed;
+        }
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public int getExpirationSeconds() {
+            return expirationSeconds;
+        }
+
+        public int getMaxPendingPerClaim() {
+            return maxPendingPerClaim;
+        }
+
+        public boolean isNotifyOnExpiration() {
+            return notifyOnExpiration;
         }
     }
 

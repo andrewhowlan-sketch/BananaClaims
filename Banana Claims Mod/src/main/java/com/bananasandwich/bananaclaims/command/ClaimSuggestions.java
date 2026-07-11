@@ -86,6 +86,29 @@ public final class ClaimSuggestions {
                 }
             };
 
+
+
+    public static final SuggestionProvider<CommandSourceStack> PARTICIPATING_CLAIMS =
+            (context, builder) -> {
+                try {
+                    java.util.UUID playerUuid = context.getSource()
+                            .getPlayerOrException()
+                            .getUUID();
+                    return SharedSuggestionProvider.suggest(
+                            Bananaclaims.CLAIM_MANAGER
+                                    .getAllClaims()
+                                    .stream()
+                                    .filter(claim -> claim.hasAccess(playerUuid))
+                                    .map(Claim::getName)
+                                    .filter(name -> name != null && !name.isBlank())
+                                    .sorted(String.CASE_INSENSITIVE_ORDER),
+                            builder
+                    );
+                } catch (Exception exception) {
+                    return builder.buildFuture();
+                }
+            };
+
     public static final SuggestionProvider<CommandSourceStack> LEAVABLE_CLAIMS =
             (context, builder) -> {
                 try {
@@ -131,6 +154,48 @@ public final class ClaimSuggestions {
                             .sorted(String.CASE_INSENSITIVE_ORDER),
                     builder
             );
+
+
+
+    public static final SuggestionProvider<CommandSourceStack> INCOMING_INVITE_CLAIMS =
+            (context, builder) -> {
+                try {
+                    java.util.UUID playerUuid = context.getSource()
+                            .getPlayerOrException()
+                            .getUUID();
+                    return SharedSuggestionProvider.suggest(
+                            Bananaclaims.INVITATION_MANAGER
+                                    .getIncoming(playerUuid)
+                                    .stream()
+                                    .map(invitation -> invitation.selector())
+                                    .distinct()
+                                    .sorted(String.CASE_INSENSITIVE_ORDER),
+                            builder
+                    );
+                } catch (Exception exception) {
+                    return builder.buildFuture();
+                }
+            };
+
+    public static final SuggestionProvider<CommandSourceStack> OUTGOING_INVITE_PLAYERS =
+            (context, builder) -> {
+                try {
+                    java.util.UUID playerUuid = context.getSource()
+                            .getPlayerOrException()
+                            .getUUID();
+                    return SharedSuggestionProvider.suggest(
+                            Bananaclaims.INVITATION_MANAGER
+                                    .getOutgoing(playerUuid)
+                                    .stream()
+                                    .map(invitation -> invitation.inviteeName())
+                                    .distinct()
+                                    .sorted(String.CASE_INSENSITIVE_ORDER),
+                            builder
+                    );
+                } catch (Exception exception) {
+                    return builder.buildFuture();
+                }
+            };
 
     public static final SuggestionProvider<CommandSourceStack> CURRENT_CLAIM_MEMBERS =
             (context, builder) -> {

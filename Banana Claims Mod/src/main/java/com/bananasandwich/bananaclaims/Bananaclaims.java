@@ -1,6 +1,8 @@
 package com.bananasandwich.bananaclaims;
 
 import com.bananasandwich.bananaclaims.claim.ClaimManager;
+import com.bananasandwich.bananaclaims.book.ClaimBookManager;
+import com.bananasandwich.bananaclaims.invitation.ClaimInvitationManager;
 import com.bananasandwich.bananaclaims.command.ClaimCommand;
 import com.bananasandwich.bananaclaims.config.BananaClaimsConfigManager;
 import com.bananasandwich.bananaclaims.integration.bluemap.BlueMapIntegration;
@@ -37,6 +39,12 @@ public class Bananaclaims implements ModInitializer {
 
     public static final ClaimManager CLAIM_MANAGER =
             new ClaimManager();
+
+    public static final ClaimInvitationManager INVITATION_MANAGER =
+            new ClaimInvitationManager(CONFIG_MANAGER);
+
+    public static final ClaimBookManager BOOK_MANAGER =
+            new ClaimBookManager();
 
     public static final ClaimStorage CLAIM_STORAGE =
             new ClaimStorage();
@@ -84,6 +92,8 @@ public class Bananaclaims implements ModInitializer {
         );
 
         DISPLAY_PREVIEW_V2_MANAGER.register();
+        INVITATION_MANAGER.register();
+        BOOK_MANAGER.register();
         ClaimNotificationManager.register();
         CLAIM_PROTECTION_MANAGER.register();
         BlueMapIntegration.register();

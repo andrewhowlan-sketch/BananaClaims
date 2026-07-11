@@ -16,6 +16,8 @@ public enum ClaimPermission {
     CREATE("bananaclaims.command.create", Group.PUBLIC),
     CREATE_AREA("bananaclaims.command.createarea", Group.PUBLIC),
     PREVIEW("bananaclaims.command.preview", Group.PUBLIC),
+    BOOK("bananaclaims.command.book", Group.PUBLIC),
+    INVITE("bananaclaims.command.invite", Group.PUBLIC),
     LEAVE("bananaclaims.command.leave", Group.PUBLIC),
     INFO("bananaclaims.command.info", Group.PUBLIC),
     LIST("bananaclaims.command.list", Group.PUBLIC),
@@ -30,6 +32,7 @@ public enum ClaimPermission {
     TRANSFER("bananaclaims.command.transfer", Group.MANAGEMENT),
     FLAG("bananaclaims.command.flag", Group.MANAGEMENT),
     POPUP("bananaclaims.command.popup", Group.MANAGEMENT),
+    BLUEMAP("bananaclaims.command.bluemap", Group.MANAGEMENT),
 
     ADMIN_ROOT("bananaclaims.command.admin", Group.ADMIN),
     ADMIN_LIST("bananaclaims.command.admin.list", Group.ADMIN),

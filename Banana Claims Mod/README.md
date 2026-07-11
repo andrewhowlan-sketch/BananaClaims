@@ -1,16 +1,18 @@
 # Banana Claims
 
-Banana Claims is a production-focused Fabric claim system built for the Banana Sandwich SMP settlement model. It provides player-managed land claims, configurable notifications, opt-in protections, client-only visual boundaries, BlueMap markers, role management, and administrative recovery tools.
+Banana Claims is a production-focused Fabric claim system built for the Banana Sandwich SMP settlement model. It provides player-managed land claims, an optional written-book management interface, invitations, configurable notifications, opt-in protections, client-only visual boundaries, BlueMap markers, role management, and administrative recovery tools.
 
 ## Highlights
 
 - Server-side operation; players do not need to install Banana Claims
+- Optional Book GUI opened with `/claim` or `/claim book`
 - Multi-chunk and irregular claims
 - Owner, subowner, and member roles
+- Time-limited claim invitations with accept, deny, cancel, and list controls
 - Terrain-following 3D boundary previews visible only to the requesting player
 - Configurable preview materials, glow, fade, and pulse animation
 - Enter and leave notifications through action bar, title, or chat
-- Optional BlueMap polygon markers with owner and membership details
+- Per-claim BlueMap fill color, outline color, opacity, and line width
 - Opt-in protection flags for blocks, interactions, containers, entities, PvP, and explosions
 - LuckPerms integration through Fabric Permissions API, with vanilla permission-level fallbacks
 - Administrative force transfer, force delete, reload, lookup, and diagnostics commands
@@ -40,28 +42,31 @@ Optional integrations:
    - `config/bananaclaims-preview.json`
    - `config/bananaclaims/claims.json`
 
-Banana Claims sends vanilla packets for previews, so no client mod is required.
+Banana Claims sends vanilla packets for previews and the Book GUI, so no client mod is required.
 
 ## Quick Start
 
 ```text
+/claim
 /claim create Home
 /claim pos1
 /claim pos2
 /claim createarea Settlement
-/claim preview
+/claim invite PlayerName Settlement
 /claim flag Settlement containers true
-/claim member add Settlement PlayerName
+/claim bluemap Settlement fill #987CEF
 ```
 
 Protection is disabled by default. Enable only the flags wanted for each claim.
 
 ## Documentation
 
+- [Book GUI](BOOK_GUI.md)
 - [Commands](COMMANDS.md)
 - [Protection Flags](FLAGS.md)
 - [Configuration](CONFIGURATION.md)
 - [Permissions](PERMISSIONS.md)
+- [Staff Guide](STAFF_GUIDE.md)
 - [Performance and Architecture](PERFORMANCE.md)
 - [Release Checklist](RELEASE_CHECKLIST.md)
 - [Development Status](DEVELOPMENT.md)
@@ -76,7 +81,7 @@ Built JARs are written to `build/libs/`.
 
 ## Data Safety
 
-Claim data is stored in `config/bananaclaims/claims.json`. Back up the entire `config/bananaclaims` directory before major server upgrades or manual data edits. If this file cannot be parsed during startup, Banana Claims refuses to initialize rather than risking an empty-data overwrite.
+Claim data is stored in `config/bananaclaims/claims.json`. Back up the entire `config/bananaclaims` directory before major server upgrades or manual data edits. Pending invitations are intentionally session-based and do not survive server restarts.
 
 ## License
 

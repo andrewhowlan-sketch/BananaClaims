@@ -1,18 +1,18 @@
 # Banana Claims Permissions
 
-Banana Claims integrates with LuckPerms through Fabric Permissions API v0 when available. If the external provider is unavailable or disabled, configurable vanilla command-level fallbacks are used.
-
-A permission controls whether a command is available. Claim ownership and role checks still apply after permission approval.
+Banana Claims integrates with LuckPerms through Fabric Permissions API v0 when available. Without an external provider, configurable vanilla command-level fallbacks are used. Permission approval does not bypass claim-role checks.
 
 ## Public Commands
 
 ```text
 bananaclaims.command.claim
+bananaclaims.command.book
 bananaclaims.command.pos1
 bananaclaims.command.pos2
 bananaclaims.command.create
 bananaclaims.command.createarea
 bananaclaims.command.preview
+bananaclaims.command.invite
 bananaclaims.command.leave
 bananaclaims.command.info
 bananaclaims.command.list
@@ -31,11 +31,12 @@ bananaclaims.command.subowner
 bananaclaims.command.transfer
 bananaclaims.command.flag
 bananaclaims.command.popup
+bananaclaims.command.bluemap
 ```
 
 ## Administration
 
-The broad node grants all Banana Claims administrative commands:
+Broad node:
 
 ```text
 bananaclaims.command.admin
@@ -56,54 +57,18 @@ bananaclaims.command.admin.reload.preview
 bananaclaims.command.admin.diagnostics
 ```
 
-Granting one granular node exposes only the relevant administration branch. Granting `bananaclaims.command.admin` exposes all branches.
-
 ## Protection Bypass
 
 ```text
 bananaclaims.protection.bypass
 ```
 
-This bypasses enabled protection flags globally. Owners, subowners, and members already have role-based access and do not need this node for their own claims.
-
-## Vanilla Fallbacks
-
-`config/bananaclaims.json` contains:
+## Examples
 
 ```text
-publicFallbackLevel
-managementFallbackLevel
-adminFallbackLevel
-fallbackLevelOverrides
-```
-
-Levels are clamped to `0` through `4`. Defaults preserve public player commands and require administrator level 3 for administrative commands and global protection bypass.
-
-Example exact-node override:
-
-```json
-"fallbackLevelOverrides": {
-  "bananaclaims.command.flag": 2,
-  "bananaclaims.protection.bypass": 4
-}
-```
-
-## LuckPerms Examples
-
-Grant all administrative functionality to a staff group:
-
-```text
+/lp group default permission set bananaclaims.command.book true
+/lp group default permission set bananaclaims.command.invite true
+/lp group default permission set bananaclaims.command.bluemap true
 /lp group admin permission set bananaclaims.command.admin true
-```
-
-Grant diagnostics only:
-
-```text
 /lp group moderator permission set bananaclaims.command.admin.diagnostics true
-```
-
-Explicitly deny claim deletion:
-
-```text
-/lp group default permission set bananaclaims.command.delete false
 ```

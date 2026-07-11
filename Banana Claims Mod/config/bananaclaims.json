@@ -1,5 +1,5 @@
 {
-  "configVersion": 1,
+  "configVersion": 2,
   "permissions": {
     "fabricPermissionsApiEnabled": true,
     "publicFallbackLevel": 0,
@@ -10,5 +10,11 @@
   "protection": {
     "denialMessagesEnabled": true,
     "denialMessageCooldownTicks": 20
+  },
+  "invitations": {
+    "enabled": true,
+    "expirationSeconds": 300,
+    "maxPendingPerClaim": 20,
+    "notifyOnExpiration": true
   }
 }

@@ -3,6 +3,7 @@ package com.bananasandwich.bananaclaims.integration.bluemap;
 import com.bananasandwich.bananaclaims.Bananaclaims;
 import com.bananasandwich.bananaclaims.claim.Claim;
 import com.bananasandwich.bananaclaims.claim.ClaimChunk;
+import com.bananasandwich.bananaclaims.claim.ClaimBlueMapStyle;
 import com.bananasandwich.bananaclaims.claim.ClaimMember;
 import com.bananasandwich.bananaclaims.claim.ClaimSubOwner;
 import com.bananasandwich.bananaclaims.claim.event.ClaimChangeEvent;
@@ -38,12 +39,6 @@ public final class BlueMapBridge {
     public static final String MARKER_SET_ID = "bananaclaims";
 
     private static final float MARKER_HEIGHT = 64.0F;
-
-    private static final Color BORDER_COLOR =
-            new Color(35, 120, 255, 1.0F);
-
-    private static final Color FILL_COLOR =
-            new Color(35, 120, 255, 0.22F);
 
     private static final Map<UUID, Integer> CLAIM_FINGERPRINTS =
             new HashMap<>();
@@ -287,8 +282,18 @@ public final class BlueMapBridge {
                 MARKER_HEIGHT
         );
 
-        marker.setLineWidth(2);
-        marker.setColors(BORDER_COLOR, FILL_COLOR);
+        ClaimBlueMapStyle style = claim.getBlueMapStyle();
+        marker.setLineWidth(style.getLineWidth());
+        marker.setColors(
+                toBlueMapColor(
+                        style.getLineRgb(),
+                        style.getLineOpacity()
+                ),
+                toBlueMapColor(
+                        style.getFillRgb(),
+                        style.getFillOpacity()
+                )
+        );
         marker.setDepthTestEnabled(false);
         marker.setListed(primary);
         marker.setDetail(detail);
@@ -558,6 +563,17 @@ public final class BlueMapBridge {
         return area / 2.0D;
     }
 
+
+    private static Color toBlueMapColor(
+            int rgb,
+            float opacity
+    ) {
+        int red = rgb >> 16 & 0xFF;
+        int green = rgb >> 8 & 0xFF;
+        int blue = rgb & 0xFF;
+        return new Color(red, green, blue, opacity);
+    }
+
     private static boolean matchesDimension(
             String claimDimension,
             String blueMapWorldId
@@ -792,6 +808,11 @@ public final class BlueMapBridge {
                 claim.getOwnerName(),
                 claim.getDescription(),
                 claim.getDimension(),
+                claim.getBlueMapStyle().getFillColor(),
+                claim.getBlueMapStyle().getLineColor(),
+                claim.getBlueMapStyle().getFillOpacity(),
+                claim.getBlueMapStyle().getLineOpacity(),
+                claim.getBlueMapStyle().getLineWidth(),
                 sortedChunks,
                 sortedSubOwners,
                 sortedMembers

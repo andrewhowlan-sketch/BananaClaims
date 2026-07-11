@@ -177,6 +177,61 @@ public class ClaimManager {
         };
     }
 
+
+    /**
+     * Adds a player after a validated invitation is accepted. Invitation
+     * authority is checked when the invitation is created and claim role
+     * validity is checked again here at acceptance time.
+     */
+    public ClaimMutationResult acceptInvitation(
+            Claim claim,
+            UUID playerUuid,
+            String playerName
+    ) {
+        if (!isManagedClaim(claim)) {
+            return ClaimMutationResult.CLAIM_NOT_FOUND;
+        }
+
+        if (playerUuid == null) {
+            return ClaimMutationResult.INVALID_PLAYER;
+        }
+
+        return switch (claim.getRole(playerUuid)) {
+            case OWNER -> ClaimMutationResult.PLAYER_IS_OWNER;
+            case SUBOWNER -> ClaimMutationResult.PLAYER_IS_SUBOWNER;
+            case MEMBER -> ClaimMutationResult.PLAYER_IS_MEMBER;
+            case NONE -> {
+                if (!claim.addMember(playerUuid, playerName)) {
+                    yield ClaimMutationResult.NO_CHANGE;
+                }
+
+                commitMutation(
+                        ClaimChangeType.MEMBERSHIP_CHANGED,
+                        claim
+                );
+
+                yield ClaimMutationResult.MEMBER_ADDED;
+            }
+        };
+    }
+
+    /**
+     * Persists and publishes a targeted update for a managed claim. This is
+     * used by claim presentation systems such as BlueMap appearance and the
+     * Book GUI so integrations can refresh only the affected marker.
+     */
+    public boolean markClaimUpdated(Claim claim) {
+        if (!isManagedClaim(claim)) {
+            return false;
+        }
+
+        commitMutation(
+                ClaimChangeType.UPDATED,
+                claim
+        );
+        return true;
+    }
+
     public ClaimMutationResult removeMember(
             Claim claim,
             UUID actorUuid,

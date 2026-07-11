@@ -23,6 +23,7 @@ public class Claim {
 
     private ClaimFlags flags = new ClaimFlags();
     private ClaimPopupSettings popupSettings = new ClaimPopupSettings();
+    private ClaimBlueMapStyle blueMapStyle = new ClaimBlueMapStyle();
 
     public Claim() {
     }
@@ -58,6 +59,7 @@ public class Claim {
         this.subOwners = new HashSet<>();
         this.flags = new ClaimFlags();
         this.popupSettings = new ClaimPopupSettings();
+        this.blueMapStyle = new ClaimBlueMapStyle();
     }
 
     public UUID getClaimId() {
@@ -115,6 +117,13 @@ public class Claim {
         changed |= members.removeIf(member ->
                 subOwnerUuids.contains(member.getUuid())
         );
+
+        if (blueMapStyle == null) {
+            blueMapStyle = new ClaimBlueMapStyle();
+            changed = true;
+        }
+
+        changed |= blueMapStyle.sanitize();
 
         return changed;
     }
@@ -472,6 +481,15 @@ public class Claim {
         return popupSettings;
     }
 
+    public ClaimBlueMapStyle getBlueMapStyle() {
+        ensureBlueMapStyle();
+        return blueMapStyle;
+    }
+
+    public boolean canEditAppearance(UUID playerUuid) {
+        return canManage(playerUuid);
+    }
+
     public boolean isOwner(UUID playerUuid) {
         return ownerUuid != null
                 && ownerUuid.equals(playerUuid);
@@ -523,6 +541,13 @@ public class Claim {
         if (popupSettings == null) {
             popupSettings = new ClaimPopupSettings();
         }
+    }
+
+    private void ensureBlueMapStyle() {
+        if (blueMapStyle == null) {
+            blueMapStyle = new ClaimBlueMapStyle();
+        }
+        blueMapStyle.sanitize();
     }
 
     private static String normalizePlayerName(String playerName) {
